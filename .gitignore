@@ -176,6 +176,13 @@ temp/
 *.tmp
 *.temp
 
+# Pip artifacts (accidentally created during dependency resolution)
+==*
+>=*
+<=*
+~=*
+^=*
+
 # Model files and checkpoints
 models/
 checkpoints/
