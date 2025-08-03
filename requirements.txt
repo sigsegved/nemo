@@ -1,0 +1,48 @@
+# Core Dependencies
+pydantic>=2.0.0                # Data validation and settings management
+pyyaml>=6.0                    # YAML configuration parsing
+numpy>=1.24.0                  # Numerical computing
+pandas>=2.0.0                  # Data manipulation and analysis
+
+# Market Data and Trading APIs
+alpaca-py>=0.20.0              # Alpaca trading API client
+websocket-client>=1.6.0        # WebSocket connections for real-time data
+requests>=2.31.0               # HTTP client for REST APIs
+
+# Strategy and Analysis
+scipy>=1.11.0                  # Scientific computing for statistics
+scikit-learn>=1.3.0            # Machine learning algorithms
+ta-lib>=0.4.25                 # Technical analysis library
+
+# Database and Storage
+sqlalchemy>=2.0.0              # Database ORM
+sqlite3                        # Built-in SQLite support
+aiosqlite>=0.19.0              # Async SQLite driver
+
+# Async and Concurrency
+asyncio                        # Built-in async support
+aiohttp>=3.8.0                 # Async HTTP client
+uvloop>=0.17.0                 # Fast event loop (Unix only)
+
+# Logging and Monitoring
+structlog>=23.0.0              # Structured logging
+prometheus-client>=0.17.0      # Metrics collection
+
+# Development and Testing
+pytest>=7.4.0                 # Testing framework
+pytest-asyncio>=0.21.0        # Async testing support
+black>=23.0.0                  # Code formatting
+flake8>=6.0.0                  # Code linting
+mypy>=1.5.0                    # Type checking
+
+# Optional LLM Integration
+openai>=1.0.0                  # OpenAI API client (optional)
+langchain>=0.1.0               # LLM framework (optional)
+
+# Configuration and Environment
+python-dotenv>=1.0.0           # Environment variable loading
+click>=8.1.0                   # Command line interface
+
+# Data Visualization (for development)
+matplotlib>=3.7.0              # Plotting library
+seaborn>=0.12.0                # Statistical visualization

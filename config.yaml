@@ -1,0 +1,121 @@
+# Nemo Volatility Harvest Bot Configuration
+# Configuration template with placeholder values
+
+# Trading Configuration
+trading:
+  # Active trading pairs
+  symbols:
+    - "BTC-USD"
+    - "ETH-USD"
+    - "SPY"
+  
+  # Base currency for calculations
+  base_currency: "USD"
+  
+  # Trading session configuration
+  session:
+    start_time: "09:30"  # Market open
+    end_time: "16:00"    # Market close
+    timezone: "US/Eastern"
+
+# Provider Configuration
+providers:
+  # Data provider settings
+  data:
+    primary: "alpaca"    # Primary data source: alpaca | gemini
+    secondary: "gemini"  # Fallback data source
+    
+  # Trade execution provider
+  trade:
+    primary: "alpaca"    # Primary execution: alpaca | gemini
+    paper_trading: true  # Enable paper trading mode
+    
+# API Credentials (use environment variables in production)
+credentials:
+  alpaca:
+    api_key: "${ALPACA_API_KEY:-}"
+    secret_key: "${ALPACA_SECRET_KEY:-}"
+    base_url: "https://paper-api.alpaca.markets"  # Paper trading URL
+    
+  gemini:
+    api_key: "${GEMINI_API_KEY:-}"
+    secret_key: "${GEMINI_SECRET_KEY:-}"
+    sandbox: true  # Use sandbox environment
+    
+# Strategy Configuration
+strategy:
+  # VWAP strategy parameters
+  vwap:
+    lookback_period: 20      # VWAP calculation period (minutes)
+    deviation_threshold: 0.5  # Deviation threshold for signals (%)
+    min_volume: 1000         # Minimum volume for VWAP validity
+    
+  # Trigger configuration
+  triggers:
+    volatility_threshold: 2.0  # Minimum volatility for entry
+    confidence_threshold: 0.7  # Minimum signal confidence
+    max_positions: 3          # Maximum concurrent positions
+    
+  # LLM integration settings
+  llm:
+    enabled: false           # Enable LLM analysis
+    provider: "openai"       # LLM provider
+    model: "gpt-4"          # Model to use
+    api_key: "${OPENAI_API_KEY}"
+
+# Risk Management
+risk:
+  # Position sizing
+  position_sizing:
+    method: "volatility_adjusted"  # fixed | percentage | volatility_adjusted
+    base_size: 1000               # Base position size in USD
+    max_portfolio_risk: 0.02      # Maximum portfolio risk per trade (2%)
+    
+  # Stop loss configuration
+  stop_loss:
+    method: "trailing"            # fixed | trailing | atr_based
+    percentage: 0.01             # Stop loss percentage (1%)
+    
+  # Portfolio limits
+  limits:
+    max_drawdown: 0.05           # Maximum portfolio drawdown (5%)
+    max_leverage: 1.0            # Maximum leverage
+    daily_loss_limit: 0.02       # Daily loss limit (2%)
+
+# Data and Logging
+data:
+  # Historical data settings
+  history:
+    default_lookback: 30         # Default lookback period (days)
+    update_frequency: "1min"     # Data update frequency
+    
+  # Storage configuration
+  storage:
+    type: "sqlite"               # sqlite | postgresql | mongodb
+    path: "./data/nemo.db"       # Database path/connection string
+    
+# Logging Configuration
+logging:
+  level: "INFO"                  # DEBUG | INFO | WARNING | ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/nemo.log"
+  max_size: "10MB"
+  backup_count: 5
+
+# Monitoring and Alerts
+monitoring:
+  # Health check configuration
+  health_check:
+    enabled: true
+    port: 8080
+    
+  # Alert configuration
+  alerts:
+    enabled: false
+    webhook_url: "${ALERT_WEBHOOK_URL}"
+    
+# Development Settings
+development:
+  debug_mode: false
+  profiling: false
+  test_mode: false
