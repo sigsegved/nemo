@@ -14,13 +14,47 @@ from typing import Optional
 
 
 class TradeTick:
-    """Model for trade tick data."""
-    def __init__(self, symbol: str, price: Decimal, size: Decimal, timestamp: datetime, side: str):
+    """Model for trade tick data with properties essential for volatility calculations."""
+    def __init__(self, symbol: str, price: Decimal, size: Decimal, timestamp: datetime, side: str,
+                 bid_price: Optional[Decimal] = None, ask_price: Optional[Decimal] = None,
+                 high: Optional[Decimal] = None, low: Optional[Decimal] = None,
+                 open_price: Optional[Decimal] = None, volume: Optional[Decimal] = None,
+                 trade_count: Optional[int] = None):
         self.symbol = symbol
-        self.price = price
-        self.size = size
+        self.price = price  # Last trade price
+        self.size = size    # Trade size
         self.timestamp = timestamp
-        self.side = side
+        self.side = side    # 'buy' or 'sell'
+        
+        # Properties for volatility and spread analysis
+        self.bid_price = bid_price      # Best bid price at time of trade
+        self.ask_price = ask_price      # Best ask price at time of trade
+        self.high = high                # Highest price in recent period
+        self.low = low                  # Lowest price in recent period  
+        self.open_price = open_price    # Opening price for period
+        self.volume = volume            # Total volume in period
+        self.trade_count = trade_count  # Number of trades in period
+    
+    @property
+    def spread(self) -> Optional[Decimal]:
+        """Calculate bid-ask spread if both bid and ask prices are available."""
+        if self.bid_price is not None and self.ask_price is not None:
+            return self.ask_price - self.bid_price
+        return None
+    
+    @property
+    def mid_price(self) -> Optional[Decimal]:
+        """Calculate mid price if both bid and ask prices are available."""
+        if self.bid_price is not None and self.ask_price is not None:
+            return (self.bid_price + self.ask_price) / 2
+        return None
+    
+    @property
+    def price_range(self) -> Optional[Decimal]:
+        """Calculate price range (high - low) if both are available."""
+        if self.high is not None and self.low is not None:
+            return self.high - self.low
+        return None
 
 
 class MetricUpdate:
