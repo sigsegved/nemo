@@ -65,14 +65,14 @@ class TradeProvider(ABC):
 
     @abstractmethod
     async def submit_order(
-        self, symbol: str, side: str, notional: Decimal, tif: str = "IOC"
+        self, symbol: str, side: str, amount: Decimal, tif: str = "IOC"
     ) -> OrderAck:
         """Submit an order and return acknowledgment.
 
         Args:
             symbol: Trading symbol (e.g., 'BTCUSD', 'AAPL')
             side: Order side ('buy' or 'sell')
-            notional: Dollar amount of the trade (price × quantity)
+            amount: Dollar amount of the trade (price × quantity)
             tif: Time In Force - 'IOC' (Immediate or Cancel),
                 'GTC' (Good Till Canceled), 'FOK' (Fill or Kill)
 

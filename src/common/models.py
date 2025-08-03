@@ -11,41 +11,28 @@ This module contains data structures for:
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
+from pydantic import BaseModel, computed_field
 
 
-class TradeTick:
+class TradeTick(BaseModel):
     """Model for trade tick data with properties for volatility calculations."""
+    
+    symbol: str
+    price: Decimal  # Last trade price
+    size: Decimal  # Trade size
+    timestamp: datetime
+    side: str  # 'buy' or 'sell'
+    
+    # Properties for volatility and spread analysis
+    bid_price: Optional[Decimal] = None  # Best bid price at time of trade
+    ask_price: Optional[Decimal] = None  # Best ask price at time of trade
+    high: Optional[Decimal] = None  # Highest price in recent period
+    low: Optional[Decimal] = None  # Lowest price in recent period
+    open_price: Optional[Decimal] = None  # Opening price for period
+    volume: Optional[Decimal] = None  # Total volume in period
+    trade_count: Optional[int] = None  # Number of trades in period
 
-    def __init__(
-        self,
-        symbol: str,
-        price: Decimal,
-        size: Decimal,
-        timestamp: datetime,
-        side: str,
-        bid_price: Optional[Decimal] = None,
-        ask_price: Optional[Decimal] = None,
-        high: Optional[Decimal] = None,
-        low: Optional[Decimal] = None,
-        open_price: Optional[Decimal] = None,
-        volume: Optional[Decimal] = None,
-        trade_count: Optional[int] = None,
-    ):
-        self.symbol = symbol
-        self.price = price  # Last trade price
-        self.size = size  # Trade size
-        self.timestamp = timestamp
-        self.side = side  # 'buy' or 'sell'
-
-        # Properties for volatility and spread analysis
-        self.bid_price = bid_price  # Best bid price at time of trade
-        self.ask_price = ask_price  # Best ask price at time of trade
-        self.high = high  # Highest price in recent period
-        self.low = low  # Lowest price in recent period
-        self.open_price = open_price  # Opening price for period
-        self.volume = volume  # Total volume in period
-        self.trade_count = trade_count  # Number of trades in period
-
+    @computed_field
     @property
     def spread(self) -> Optional[Decimal]:
         """Calculate bid-ask spread if both bid and ask prices are available."""
@@ -53,6 +40,7 @@ class TradeTick:
             return self.ask_price - self.bid_price
         return None
 
+    @computed_field
     @property
     def mid_price(self) -> Optional[Decimal]:
         """Calculate mid price if both bid and ask prices are available."""
@@ -60,6 +48,7 @@ class TradeTick:
             return (self.bid_price + self.ask_price) / 2
         return None
 
+    @computed_field
     @property
     def price_range(self) -> Optional[Decimal]:
         """Calculate price range (high - low) if both are available."""
@@ -68,60 +57,37 @@ class TradeTick:
         return None
 
 
-class MetricUpdate:
+class MetricUpdate(BaseModel):
     """Model for metric updates (mark-price, funding, liquidations)."""
-
-    def __init__(
-        self, symbol: str, metric_type: str, value: Decimal, timestamp: datetime
-    ):
-        self.symbol = symbol
-        self.metric_type = metric_type
-        self.value = value
-        self.timestamp = timestamp
+    
+    symbol: str
+    metric_type: str
+    value: Decimal
+    timestamp: datetime
 
 
-class OrderAck:
+class OrderAck(BaseModel):
     """Model for order acknowledgment."""
-
-    def __init__(
-        self,
-        order_id: str,
-        symbol: str,
-        side: str,
-        notional: Decimal,
-        status: str,
-        timestamp: datetime,
-        message: Optional[str] = None,
-    ):
-        self.order_id = order_id
-        self.symbol = symbol
-        self.side = side
-        self.notional = notional
-        self.status = status
-        self.timestamp = timestamp
-        self.message = message
+    
+    order_id: str
+    symbol: str
+    side: str
+    amount: Decimal
+    status: str
+    timestamp: datetime
+    message: Optional[str] = None
 
 
-class Position:
+class Position(BaseModel):
     """Model for trading position."""
-
-    def __init__(
-        self,
-        symbol: str,
-        side: str,
-        size: Decimal,
-        entry_price: Decimal,
-        current_price: Decimal,
-        unrealized_pnl: Decimal,
-        timestamp: datetime,
-    ):
-        self.symbol = symbol
-        self.side = side
-        self.size = size
-        self.entry_price = entry_price
-        self.current_price = current_price
-        self.unrealized_pnl = unrealized_pnl
-        self.timestamp = timestamp
+    
+    symbol: str
+    side: str
+    size: Decimal
+    entry_price: Decimal
+    current_price: Decimal
+    unrealized_pnl: Decimal
+    timestamp: datetime
 
 
 # TODO: Implement additional core data models
