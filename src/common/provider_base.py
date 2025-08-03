@@ -15,7 +15,7 @@ and REST connection patterns:
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, List
 from decimal import Decimal
-from .models import TradeTick, MetricUpdate, OrderAck, Position
+from .models import TradeTick, MarketEvent, OrderAck, Position
 
 
 class DataProvider(ABC):
@@ -32,8 +32,8 @@ class DataProvider(ABC):
         pass
 
     @abstractmethod
-    async def subscribe_metrics(self, symbols: List[str]) -> None:
-        """Subscribe to metrics (mark-price, funding, liquidations)."""
+    async def subscribe_events(self, symbols: List[str]) -> None:
+        """Subscribe to market events (mark-price, funding, liquidations)."""
         pass
 
     @abstractmethod
@@ -46,8 +46,8 @@ class DataProvider(ABC):
         pass
 
     @abstractmethod
-    async def iter_metrics(self) -> AsyncIterator[MetricUpdate]:
-        """Async iterator yielding metric updates.
+    async def iter_events(self) -> AsyncIterator[MarketEvent]:
+        """Async iterator yielding market events.
 
         For WebSocket providers: yield data as it arrives from the stream.
         For REST providers: implement internal polling and yield data at intervals.

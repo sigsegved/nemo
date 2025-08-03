@@ -57,11 +57,11 @@ class TradeTick(BaseModel):
         return None
 
 
-class MetricUpdate(BaseModel):
-    """Model for metric updates (mark-price, funding, liquidations)."""
+class MarketEvent(BaseModel):
+    """Model for market events (mark-price, funding, liquidations)."""
     
     symbol: str
-    metric_type: str
+    event_type: str
     value: Decimal
     timestamp: datetime
 
