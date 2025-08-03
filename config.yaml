@@ -33,13 +33,13 @@ providers:
 # API Credentials (use environment variables in production)
 credentials:
   alpaca:
-    api_key: "${ALPACA_API_KEY}"
-    secret_key: "${ALPACA_SECRET_KEY}"
+    api_key: "${ALPACA_API_KEY:-}"
+    secret_key: "${ALPACA_SECRET_KEY:-}"
     base_url: "https://paper-api.alpaca.markets"  # Paper trading URL
     
   gemini:
-    api_key: "${GEMINI_API_KEY}"
-    secret_key: "${GEMINI_SECRET_KEY}"
+    api_key: "${GEMINI_API_KEY:-}"
+    secret_key: "${GEMINI_SECRET_KEY:-}"
     sandbox: true  # Use sandbox environment
     
 # Strategy Configuration
