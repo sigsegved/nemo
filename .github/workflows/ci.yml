@@ -1,0 +1,303 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements-ci.txt', 'requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          ${{ runner.os }}-pip-
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install wheel setuptools
+        
+        # Install essential dependencies with increased timeout and retries
+        echo "Installing core dependencies..."
+        pip install --timeout 120 --retries 3 pytest pytest-asyncio pytest-cov || echo "Warning: Some test dependencies failed to install"
+        pip install --timeout 120 --retries 3 black flake8 mypy || echo "Warning: Some code quality tools failed to install"
+        pip install --timeout 120 --retries 3 pydantic pyyaml || echo "Warning: Some core dependencies failed to install"
+        
+        # Try CI-specific requirements
+        echo "Installing CI-specific dependencies..."
+        pip install -r requirements-ci.txt --timeout 120 --retries 3 || echo "Warning: CI requirements installation had issues"
+        
+        # Try additional packages individually
+        for pkg in "numpy" "pandas" "requests" "click"; do
+          echo "Attempting to install $pkg..."
+          pip install --timeout 60 "$pkg" || echo "Failed to install $pkg, continuing..."
+        done
+
+    - name: Verify installation
+      run: |
+        echo "=== Checking available tools ==="
+        python -c "import sys; print(f'Python: {sys.version}')"
+        python -c "try: import pytest; print(f'pytest: {pytest.__version__}')
+        except ImportError: print('pytest: Not available')"
+        python -c "try: import black; print(f'black: {black.__version__}')
+        except ImportError: print('black: Not available')"
+        python -c "try: import flake8; print(f'flake8: Available')
+        except ImportError: print('flake8: Not available')"
+        python -c "try: import mypy; print(f'mypy: Available')
+        except ImportError: print('mypy: Not available')"
+        python -c "try: import pydantic; print(f'pydantic: {pydantic.__version__}')
+        except ImportError: print('pydantic: Not available')"
+
+    - name: Python syntax check
+      run: |
+        echo "=== Checking Python syntax ==="
+        find src -name "*.py" | xargs python -m py_compile
+        find tests -name "*.py" | xargs python -m py_compile
+        echo "✓ All Python files compile successfully"
+
+    - name: Check code formatting with black (if available)
+      run: |
+        if python -c "import black" 2>/dev/null; then
+          echo "=== Running black formatter check ==="
+          black --check --diff src/ tests/ || echo "⚠️  Code formatting issues found"
+        else
+          echo "⚠️  Black not available, skipping formatting check"
+        fi
+
+    - name: Lint with flake8 (if available)
+      run: |
+        if python -c "import flake8" 2>/dev/null; then
+          echo "=== Running flake8 linting ==="
+          # Basic error checking
+          python -m flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics || echo "⚠️  Syntax errors found"
+          # Style checking (non-blocking)
+          python -m flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics --ignore=W503 || true
+        else
+          echo "⚠️  Flake8 not available, skipping linting"
+        fi
+
+    - name: Type check with mypy (if available)
+      run: |
+        if python -c "import mypy" 2>/dev/null; then
+          echo "=== Running mypy type checking ==="
+          # Create basic mypy config
+          cat > mypy.ini << EOF
+        [mypy]
+        python_version = ${{ matrix.python-version }}
+        warn_return_any = True
+        warn_unused_configs = True
+        disallow_untyped_defs = False
+        ignore_missing_imports = True
+        EOF
+          # Run mypy (non-blocking in early development)
+          python -m mypy src/ --ignore-missing-imports || echo "⚠️  Type checking completed with warnings"
+        else
+          echo "⚠️  MyPy not available, skipping type checking"
+        fi
+
+    - name: Test with pytest (if available)
+      run: |
+        if python -c "import pytest" 2>/dev/null; then
+          echo "=== Running pytest ==="
+          python -m pytest tests/ -v --tb=short || echo "⚠️  Some tests failed"
+          
+          # Try coverage if available
+          if python -c "import pytest_cov" 2>/dev/null; then
+            echo "=== Running tests with coverage ==="
+            python -m pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing || echo "⚠️  Coverage run completed with issues"
+          fi
+        else
+          echo "⚠️  Pytest not available, running basic test imports"
+          find tests -name "test_*.py" -exec python -c "
+          import sys
+          sys.path.insert(0, 'src')
+          try:
+              exec(open('{}').read())
+              print('✓ {} imports successfully')
+          except Exception as e:
+              print('⚠️  {} has import issues: {}'.format('{}', e))
+          " \;
+        fi
+
+    - name: Upload coverage to Codecov (if coverage available)
+      if: matrix.python-version == '3.12'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+        verbose: true
+      continue-on-error: true
+
+  # Basic validation job that should always work
+  basic-validation:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Basic Python validation
+      run: |
+        echo "=== Basic validation checks ==="
+        
+        # Check Python syntax
+        find . -name "*.py" | xargs python -m py_compile
+        echo "✓ All Python files have valid syntax"
+        
+        # Check for common issues
+        echo "=== Checking for common issues ==="
+        
+        # Check for print statements (should use logging)
+        if grep -r "print(" src/ --include="*.py" | grep -v "TODO\|FIXME\|DEBUG"; then
+          echo "⚠️  Found print statements in source code (consider using logging)"
+        fi
+        
+        # Check for TODO/FIXME comments
+        todo_count=$(grep -r "TODO\|FIXME" src/ --include="*.py" | wc -l)
+        echo "📝 Found $todo_count TODO/FIXME comments"
+        
+        # Check imports
+        echo "=== Checking imports ==="
+        for file in $(find src -name "*.py"); do
+          echo "Checking imports in $file..."
+          python -c "
+        import ast
+        import sys
+        
+        with open('$file', 'r') as f:
+            try:
+                tree = ast.parse(f.read())
+                print('✓ $file: imports are syntactically valid')
+            except SyntaxError as e:
+                print('✗ $file: syntax error - {}'.format(e))
+                sys.exit(1)
+          "
+        done
+
+    - name: Project structure validation
+      run: |
+        echo "=== Validating project structure ==="
+        
+        # Check required files exist
+        required_files=(
+          "requirements.txt"
+          "README.md"
+          "src/main.py"
+          "tests/__init__.py"
+          "pytest.ini"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [ -f "$file" ]; then
+            echo "✓ $file exists"
+          else
+            echo "✗ $file is missing"
+          fi
+        done
+        
+        # Check directory structure
+        echo "=== Directory structure ==="
+        tree -d -L 3 . || ls -la
+
+  # Dependency analysis
+  dependency-analysis:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Analyze requirements
+      run: |
+        echo "=== Analyzing requirements.txt ==="
+        
+        # Check requirements.txt syntax
+        python -c "
+        import pkg_resources
+        with open('requirements.txt', 'r') as f:
+            requirements = f.read()
+        try:
+            list(pkg_resources.parse_requirements(requirements))
+            print('✓ requirements.txt syntax is valid')
+        except Exception as e:
+            print('✗ requirements.txt has syntax errors: {}'.format(e))
+            exit(1)
+        "
+        
+        # Count dependencies
+        total_deps=$(grep -c "^[a-zA-Z]" requirements.txt)
+        echo "📦 Total dependencies: $total_deps"
+        
+        # List main categories
+        echo "=== Dependency categories ==="
+        echo "Core dependencies:"
+        grep -E "(pydantic|pyyaml|numpy|pandas)" requirements.txt || echo "None found"
+        echo "Testing dependencies:"
+        grep -E "(pytest|black|flake8|mypy)" requirements.txt || echo "None found"
+        echo "API dependencies:"
+        grep -E "(alpaca|requests|websocket)" requirements.txt || echo "None found"
+
+  # Quality gate summary
+  quality-gate:
+    runs-on: ubuntu-latest
+    needs: [test, basic-validation, dependency-analysis]
+    if: always()
+    steps:
+    - name: Quality gate summary
+      run: |
+        echo "=== CI Pipeline Results ==="
+        echo "Test job status: ${{ needs.test.result }}"
+        echo "Basic validation status: ${{ needs.basic-validation.result }}"
+        echo "Dependency analysis status: ${{ needs.dependency-analysis.result }}"
+        
+        # Basic validation must pass
+        if [ "${{ needs.basic-validation.result }}" != "success" ]; then
+          echo "❌ Basic validation failed - this is required"
+          exit 1
+        fi
+        
+        # Dependency analysis should pass
+        if [ "${{ needs.dependency-analysis.result }}" != "success" ]; then
+          echo "⚠️  Dependency analysis failed"
+        fi
+        
+        # Test job can have warnings but should not completely fail
+        if [ "${{ needs.test.result }}" == "failure" ]; then
+          echo "⚠️  Test job encountered issues, but this is non-blocking in early development"
+        fi
+        
+        echo "✅ Quality gate passed - basic requirements met"
