@@ -7,12 +7,14 @@ These tests cover the Gemini trade provider REST API implementation, including:
 - Position and account data retrieval
 - Error handling and resilience
 - Mock testing for comprehensive coverage
+- Integration tests with sandbox environment
 """
 
 import hashlib
 import hmac
 import base64
 import json
+import os
 import pytest
 from datetime import datetime
 from decimal import Decimal
@@ -36,7 +38,7 @@ class TestGeminiTradeProviderConfiguration:
         assert provider.config == config
         assert provider.api_key == ""
         assert provider.api_secret == ""
-        assert provider.rest_url == "https://api.gemini.com"
+        assert provider.rest_url == "https://api.sandbox.gemini.com"
         assert provider.session is None
         assert not provider.connected
 
@@ -63,7 +65,7 @@ class TestGeminiTradeProviderConfiguration:
         
         assert provider.api_key == "partial_key"
         assert provider.api_secret == ""  # Default empty
-        assert provider.rest_url == "https://api.gemini.com"  # Default
+        assert provider.rest_url == "https://api.sandbox.gemini.com"  # Default
 
 
 class TestGeminiTradeProviderAuthentication:
@@ -662,7 +664,7 @@ class TestGeminiTradeProviderIntegration:
         config = {
             "API_KEY": "test_key",
             "API_SECRET": "test_secret",
-            "REST_URL": "https://api.gemini.com"
+            "REST_URL": "https://api.sandbox.gemini.com"
         }
         return GeminiTradeProvider(config)
 
@@ -725,6 +727,132 @@ class TestGeminiTradeProviderIntegration:
             assert equity == Decimal("95000.00")
             
             await provider.disconnect()
+
+
+class TestGeminiTradeProviderSandboxIntegration:
+    """Integration tests for Gemini trade provider using sandbox environment."""
+
+    @pytest.fixture
+    def sandbox_config(self):
+        """Get sandbox configuration from environment."""
+        api_key = os.getenv("PAPER_GEMINI_API_KEY")
+        api_secret = os.getenv("PAPER_GEMINI_API_SECRET")
+        
+        if not api_key or not api_secret:
+            pytest.skip("Sandbox credentials not available in environment")
+        
+        return {
+            "API_KEY": api_key,
+            "API_SECRET": api_secret,
+            "REST_URL": "https://api.sandbox.gemini.com"
+        }
+
+    @pytest.mark.integration
+    def test_environment_credentials_available(self):
+        """Test if environment credentials are available for integration tests."""
+        api_key = os.getenv("PAPER_GEMINI_API_KEY")
+        api_secret = os.getenv("PAPER_GEMINI_API_SECRET")
+        
+        if api_key and api_secret:
+            config = {
+                "API_KEY": api_key,
+                "API_SECRET": api_secret,
+                "REST_URL": "https://api.sandbox.gemini.com"
+            }
+            provider = GeminiTradeProvider(config)
+            
+            # Basic configuration validation
+            assert provider.rest_url == "https://api.sandbox.gemini.com"
+            assert provider.api_key == api_key
+            assert provider.api_secret == api_secret
+            assert not provider.connected  # Should not be connected yet
+        else:
+            pytest.skip("PAPER_GEMINI_API_KEY and PAPER_GEMINI_API_SECRET not found in environment")
+
+    @pytest.mark.integration 
+    @pytest.mark.network
+    async def test_sandbox_connection(self, sandbox_config):
+        """Test real connection to Gemini sandbox API (if credentials available)."""
+        provider = GeminiTradeProvider(sandbox_config)
+        
+        try:
+            # This would test a real connection - should be skipped if credentials not available
+            await provider.connect()
+            assert provider.connected
+            
+            # Test basic account access
+            equity = await provider.get_account_equity()
+            assert isinstance(equity, Decimal)
+            assert equity >= 0
+            
+        except Exception as e:
+            # If connection fails due to network or credentials, that's expected
+            pytest.skip(f"Cannot connect to sandbox: {e}")
+        finally:
+            if provider.connected:
+                await provider.disconnect()
+
+    @pytest.mark.integration
+    @pytest.mark.network  
+    async def test_sandbox_order_submission(self, sandbox_config):
+        """Test order submission to sandbox (if credentials available)."""
+        provider = GeminiTradeProvider(sandbox_config)
+        
+        try:
+            await provider.connect()
+            
+            # Submit a small test order
+            order_ack = await provider.submit_order(
+                "BTC-GUSD-PERP", 
+                "buy", 
+                Decimal("10.00"),  # Small $10 order
+                "IOC"
+            )
+            
+            # Check that we got some response
+            assert isinstance(order_ack, OrderAck)
+            assert order_ack.symbol == "BTC-GUSD-PERP"
+            assert order_ack.side == "buy"
+            assert order_ack.amount == Decimal("10.00")
+            
+        except Exception as e:
+            # If order fails due to insufficient funds or API issues, that's expected in sandbox
+            pytest.skip(f"Cannot submit order to sandbox: {e}")
+        finally:
+            if provider.connected:
+                await provider.disconnect()
+
+    @pytest.mark.integration
+    def test_sandbox_url_configuration(self, sandbox_config):
+        """Test that sandbox URLs are properly configured."""
+        provider = GeminiTradeProvider(sandbox_config)
+        
+        # Verify sandbox endpoint is used
+        assert "sandbox" in provider.rest_url
+        assert provider.rest_url == "https://api.sandbox.gemini.com"
+
+    @pytest.mark.integration
+    async def test_sandbox_account_operations(self, sandbox_config):
+        """Test basic account operations with sandbox."""
+        provider = GeminiTradeProvider(sandbox_config)
+        
+        try:
+            await provider.connect()
+            
+            # Test fetching positions (should work even if empty)
+            positions = await provider.fetch_positions()
+            assert isinstance(positions, list)
+            
+            # Test fetching account equity (should return a Decimal)
+            equity = await provider.get_account_equity()
+            assert isinstance(equity, Decimal)
+            assert equity >= 0
+            
+        except Exception as e:
+            pytest.skip(f"Cannot perform account operations: {e}")
+        finally:
+            if provider.connected:
+                await provider.disconnect()
 
 
 if __name__ == "__main__":

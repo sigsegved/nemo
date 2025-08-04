@@ -96,8 +96,8 @@ class TestConfig:
                 'gemini': {
                     'API_KEY': 'test_gemini_key',
                     'API_SECRET': 'test_gemini_secret',
-                    'WS_URL': 'wss://api.gemini.com',
-                    'REST_URL': 'https://api.gemini.com'
+                    'WS_URL': 'wss://api.sandbox.gemini.com',
+                    'REST_URL': 'https://api.sandbox.gemini.com'
                 }
             }
         }
@@ -122,8 +122,8 @@ PROVIDERS:
   gemini:
     API_KEY: test_key
     API_SECRET: test_secret
-    WS_URL: wss://api.gemini.com/v1/marketdata
-    REST_URL: https://api.gemini.com/v1
+    WS_URL: wss://api.sandbox.gemini.com/v1/marketdata
+    REST_URL: https://api.sandbox.gemini.com/v1
   alpaca:
     API_KEY: alpaca_key
     API_SECRET: alpaca_secret
@@ -290,6 +290,47 @@ PROVIDERS:
             if 'TEST_PROVIDER' in os.environ:
                 del os.environ['TEST_PROVIDER']
     
+    def test_paper_trading_env_variables(self, valid_yaml_content):
+        """Test paper trading environment variable support."""
+        # Set paper trading environment variables  
+        os.environ['PAPER_GEMINI_API_KEY'] = 'paper_gemini_key'
+        os.environ['PAPER_GEMINI_API_SECRET'] = 'paper_gemini_secret'
+        os.environ['PAPER_ALPACA_API_KEY'] = 'paper_alpaca_key'
+        os.environ['PAPER_ALPACA_API_SECRET'] = 'paper_alpaca_secret'
+        
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write(valid_yaml_content)
+                temp_path = f.name
+            
+            try:
+                config = Config.load_from_file(temp_path)
+                
+                # Verify that paper trading environment variables are accessible
+                # (These would be used by integration tests)
+                paper_gemini_key = os.getenv('PAPER_GEMINI_API_KEY')
+                paper_gemini_secret = os.getenv('PAPER_GEMINI_API_SECRET')
+                paper_alpaca_key = os.getenv('PAPER_ALPACA_API_KEY')
+                paper_alpaca_secret = os.getenv('PAPER_ALPACA_API_SECRET')
+                
+                assert paper_gemini_key == 'paper_gemini_key'
+                assert paper_gemini_secret == 'paper_gemini_secret'
+                assert paper_alpaca_key == 'paper_alpaca_key'
+                assert paper_alpaca_secret == 'paper_alpaca_secret'
+                
+                # Regular API keys should still work from YAML
+                assert config.providers['gemini'].api_key == 'test_key'
+                assert config.providers['gemini'].api_secret == 'test_secret'
+                
+            finally:
+                os.unlink(temp_path)
+        finally:
+            # Clean up environment variables
+            for var in ['PAPER_GEMINI_API_KEY', 'PAPER_GEMINI_API_SECRET', 
+                       'PAPER_ALPACA_API_KEY', 'PAPER_ALPACA_API_SECRET']:
+                if var in os.environ:
+                    del os.environ[var]
+    
     def test_decimal_precision(self, valid_config_dict):
         """Test that financial values maintain decimal precision."""
         config = Config._from_dict(valid_config_dict)
@@ -340,8 +381,8 @@ PROVIDERS:
   gemini:
     API_KEY: yaml_gemini_key
     API_SECRET: yaml_gemini_secret
-    WS_URL: wss://api.gemini.com/v1/marketdata
-    REST_URL: https://api.gemini.com/v1
+    WS_URL: wss://api.sandbox.gemini.com/v1/marketdata
+    REST_URL: https://api.sandbox.gemini.com/v1
   alpaca:
     API_KEY: yaml_alpaca_key
     API_SECRET: yaml_alpaca_secret

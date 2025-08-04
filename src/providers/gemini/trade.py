@@ -34,7 +34,8 @@ class GeminiTradeProvider(TradeProvider):
         self.config = config
         self.api_key = config.get("API_KEY", "")
         self.api_secret = config.get("API_SECRET", "")
-        self.rest_url = config.get("REST_URL", "https://api.gemini.com")
+        # Use sandbox by default for testing, production URL can be overridden in config
+        self.rest_url = config.get("REST_URL", "https://api.sandbox.gemini.com")
         self.session: Optional[aiohttp.ClientSession] = None
         self.connected = False
     

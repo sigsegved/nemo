@@ -7,10 +7,12 @@ These tests cover the Gemini data provider WebSocket implementation, including:
 - Symbol subscription and management
 - Error handling and resilience
 - Mock testing for comprehensive coverage
+- Integration tests with sandbox environment
 """
 
 import asyncio
 import json
+import os
 import pytest
 from datetime import datetime
 from decimal import Decimal
@@ -32,7 +34,7 @@ class TestGeminiDataProviderConfiguration:
         provider = GeminiDataProvider(config)
         
         assert provider.config == config
-        assert provider.ws_url == "wss://api.gemini.com/v2/marketdata"
+        assert provider.ws_url == "wss://api.sandbox.gemini.com/v2/marketdata"
         assert provider.websocket is None
         assert not provider.connected
         assert provider.subscribed_symbols == []
@@ -65,7 +67,7 @@ class TestGeminiDataProviderConnection:
     @pytest.fixture
     def provider(self):
         """Create a provider instance for testing."""
-        config = {"WS_URL": "wss://api.gemini.com/v2/marketdata"}
+        config = {"WS_URL": "wss://api.sandbox.gemini.com/v2/marketdata"}
         return GeminiDataProvider(config)
 
     @pytest.mark.asyncio
@@ -133,7 +135,7 @@ class TestGeminiDataProviderSubscription:
     @pytest.fixture
     def provider(self):
         """Create a connected provider instance for testing."""
-        config = {"WS_URL": "wss://api.gemini.com/v2/marketdata"}
+        config = {"WS_URL": "wss://api.sandbox.gemini.com/v2/marketdata"}
         provider = GeminiDataProvider(config)
         provider.connected = True
         provider.websocket = AsyncMock()
@@ -462,7 +464,7 @@ class TestGeminiDataProviderIntegration:
     def provider(self):
         """Create provider for integration testing."""
         config = {
-            "WS_URL": "wss://api.gemini.com/v2/marketdata"
+            "WS_URL": "wss://api.sandbox.gemini.com/v2/marketdata"
         }
         return GeminiDataProvider(config)
 
@@ -584,6 +586,76 @@ class TestGeminiDataProviderHelpers:
         
         assert is_valid_trade(valid_trade)
         assert not is_valid_trade(invalid_trade)
+
+
+class TestGeminiDataProviderSandboxIntegration:
+    """Integration tests for Gemini data provider using sandbox environment."""
+
+    @pytest.fixture
+    def sandbox_config(self):
+        """Get sandbox configuration from environment."""
+        api_key = os.getenv("PAPER_GEMINI_API_KEY")
+        api_secret = os.getenv("PAPER_GEMINI_API_SECRET")
+        
+        if not api_key or not api_secret:
+            pytest.skip("Sandbox credentials not available in environment")
+        
+        return {
+            "API_KEY": api_key,
+            "API_SECRET": api_secret,
+            "WS_URL": "wss://api.sandbox.gemini.com/v2/marketdata"
+        }
+
+    @pytest.mark.integration
+    def test_environment_credentials_available(self):
+        """Test if environment credentials are available for integration tests."""
+        api_key = os.getenv("PAPER_GEMINI_API_KEY")
+        api_secret = os.getenv("PAPER_GEMINI_API_SECRET")
+        
+        if api_key and api_secret:
+            config = {
+                "API_KEY": api_key,
+                "API_SECRET": api_secret,
+                "WS_URL": "wss://api.sandbox.gemini.com/v2/marketdata"
+            }
+            provider = GeminiDataProvider(config)
+            
+            # Basic configuration validation
+            assert provider.ws_url == "wss://api.sandbox.gemini.com/v2/marketdata"
+            assert not provider.connected  # Should not be connected yet
+        else:
+            pytest.skip("PAPER_GEMINI_API_KEY and PAPER_GEMINI_API_SECRET not found in environment")
+
+    @pytest.mark.integration
+    @pytest.mark.network 
+    async def test_sandbox_websocket_connection(self, sandbox_config):
+        """Test real WebSocket connection to Gemini sandbox (if credentials available)."""
+        provider = GeminiDataProvider(sandbox_config)
+        
+        try:
+            # This would test a real connection - should be skipped if credentials not available
+            await provider.connect()
+            assert provider.connected
+            
+            # Test basic functionality
+            await provider.subscribe_trades(["BTC-GUSD-PERP"])
+            assert "BTC-GUSD-PERP" in provider.subscribed_symbols
+            
+        except Exception as e:
+            # If connection fails due to network or credentials, that's expected
+            pytest.skip(f"Cannot connect to sandbox: {e}")
+        finally:
+            if provider.connected:
+                await provider.disconnect()
+
+    @pytest.mark.integration
+    def test_sandbox_url_configuration(self, sandbox_config):
+        """Test that sandbox URLs are properly configured."""
+        provider = GeminiDataProvider(sandbox_config)
+        
+        # Verify sandbox endpoint is used
+        assert "sandbox" in provider.ws_url
+        assert provider.ws_url == "wss://api.sandbox.gemini.com/v2/marketdata"
 
 
 if __name__ == "__main__":

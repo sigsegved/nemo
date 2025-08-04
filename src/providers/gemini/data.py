@@ -30,7 +30,8 @@ class GeminiDataProvider(DataProvider):
             config: Provider-specific configuration containing WS_URL
         """
         self.config = config
-        self.ws_url = config.get("WS_URL", "wss://api.gemini.com/v2/marketdata")
+        # Use sandbox by default for testing, production URL can be overridden in config
+        self.ws_url = config.get("WS_URL", "wss://api.sandbox.gemini.com/v2/marketdata")
         self.websocket: Optional[websockets.WebSocketServerProtocol] = None
         self.connected = False
         self.subscribed_symbols: List[str] = []
