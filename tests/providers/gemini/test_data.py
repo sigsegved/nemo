@@ -394,19 +394,20 @@ class TestGeminiDataProviderReconnection:
     @patch("websockets.connect", new_callable=AsyncMock)
     @patch("asyncio.sleep")
     async def test_reconnection_logic(self, mock_sleep, mock_connect, provider):
-        """Test automatic reconnection with exponential backoff.""" 
+        """Test automatic reconnection with exponential backoff."""
         # Create a proper mock websocket
         mock_websocket = AsyncMock()
-        
+
         # First connection fails, second succeeds
         call_count = 0
+
         async def mock_connect_side_effect(uri, *args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 raise Exception("First attempt fails")
             return mock_websocket
-            
+
         mock_connect.side_effect = mock_connect_side_effect
 
         await provider._handle_reconnection()
