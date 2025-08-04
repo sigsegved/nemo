@@ -140,10 +140,13 @@ class Config:
     
     def _validate_provider_availability(self) -> None:
         """Ensure configured providers are available in providers dict."""
-        if self.data_provider not in self.providers:
+        # Convert provider names to lowercase for case-insensitive lookup
+        available_providers = {name.lower(): name for name in self.providers.keys()}
+        
+        if self.data_provider.lower() not in available_providers:
             raise ValueError(f"Data provider '{self.data_provider}' not found in providers configuration")
         
-        if self.trade_provider not in self.providers:
+        if self.trade_provider.lower() not in available_providers:
             raise ValueError(f"Trade provider '{self.trade_provider}' not found in providers configuration")
     
     def validate_for_trading(self) -> None:
@@ -151,8 +154,11 @@ class Config:
         Validate that configuration is ready for trading operations.
         This checks that all required credentials are present.
         """
+        # Convert provider names to lowercase for case-insensitive lookup
+        providers_by_lower = {name.lower(): config for name, config in self.providers.items()}
+        
         # Validate data provider credentials
-        data_provider_config = self.providers.get(self.data_provider)
+        data_provider_config = providers_by_lower.get(self.data_provider.lower())
         if data_provider_config:
             try:
                 data_provider_config.validate_for_use()
@@ -160,7 +166,7 @@ class Config:
                 raise ValueError(f"Data provider '{self.data_provider}' configuration invalid: {e}")
         
         # Validate trade provider credentials
-        trade_provider_config = self.providers.get(self.trade_provider)
+        trade_provider_config = providers_by_lower.get(self.trade_provider.lower())
         if trade_provider_config:
             try:
                 trade_provider_config.validate_for_use()
@@ -170,6 +176,53 @@ class Config:
         # Additional trading-specific validations could go here
         if not self.openai_model.strip():
             raise ValueError("OpenAI model must be specified for trading operations")
+
+    def to_provider_factory_format(self) -> Dict[str, Any]:
+        """
+        Convert configuration to format expected by ProviderFactory.
+        
+        Returns:
+            Dictionary in format expected by provider factory
+        """
+        # Convert provider configurations to credentials format
+        credentials = {}
+        for name, provider_config in self.providers.items():
+            credentials[name] = {
+                "api_key": provider_config.api_key,
+                "secret": provider_config.api_secret,
+                "ws_url": provider_config.ws_url,
+                "rest_url": provider_config.rest_url,
+            }
+        
+        # Build provider factory expected structure
+        return {
+            "providers": {
+                "data": {
+                    "primary": self.data_provider.lower(),
+                    "secondary": None  # Could be configured if needed
+                },
+                "trade": {
+                    "primary": self.trade_provider.lower(),
+                    "paper_trading": True  # Default to paper trading for safety
+                }
+            },
+            "credentials": credentials,
+            "trading": {
+                "max_gross_pct_equity": float(self.max_gross_pct_equity),
+                "max_leverage": self.max_leverage,
+                "stop_loss_pct": float(self.stop_loss_pct),
+                "price_dev": float(self.price_dev),
+                "vol_mult": self.vol_mult,
+                "symbols": self.symbols,
+                "cooldown_hr": self.cooldown_hr,
+            },
+            "risk": {
+                "limits": {
+                    "max_drawdown": float(self.stop_loss_pct),
+                    "daily_loss_limit": float(self.max_gross_pct_equity * self.stop_loss_pct)
+                }
+            }
+        }
     
     @classmethod
     def load_from_file(cls, config_path: str) -> 'Config':
@@ -225,7 +278,7 @@ class Config:
                 return [substitute_recursive(item) for item in obj]
             elif isinstance(obj, str):
                 # Pattern: ${VARIABLE_NAME:-default_value}
-                pattern = r'\$\{([^}:]+)(?::([^}]*))?\}'
+                pattern = r'\$\{([^}:]+)(?::-([^}]*))?\}'
                 
                 def replace_var(match):
                     var_name = match.group(1)
