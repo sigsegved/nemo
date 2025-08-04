@@ -75,6 +75,7 @@ class OrderAck(BaseModel):
     amount: Decimal
     status: str
     timestamp: datetime
+    tif: Optional[str] = None  # Time In Force
     message: Optional[str] = None
 
 
