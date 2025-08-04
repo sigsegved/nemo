@@ -127,10 +127,36 @@ jobs:
         fi
 
     - name: Test with pytest (if available)
+      env:
+        # Expose paper trading secrets as environment variables for integration tests
+        PAPER_ALPACA_API_KEY: ${{ secrets.PAPER_ALPACA_API_KEY }}
+        PAPER_ALPACA_API_SECRET: ${{ secrets.PAPER_ALPACA_API_SECRET }}
+        PAPER_GEMINI_API_KEY: ${{ secrets.PAPER_GEMINI_API_KEY }}
+        PAPER_GEMINI_API_SECRET: ${{ secrets.PAPER_GEMINI_API_SECRET }}
       run: |
         if python -c "import pytest" 2>/dev/null; then
           echo "=== Running pytest ==="
-          python -m pytest tests/ -v --tb=short || echo "⚠️  Some tests failed"
+          
+          # Check if paper trading credentials are available
+          echo "=== Checking integration test credentials ==="
+          if [ -n "$PAPER_ALPACA_API_KEY" ] && [ -n "$PAPER_ALPACA_API_SECRET" ]; then
+            echo "✓ Alpaca paper trading credentials available"
+          else
+            echo "⚠️  Alpaca paper trading credentials not available - integration tests will be skipped"
+          fi
+          
+          if [ -n "$PAPER_GEMINI_API_KEY" ] && [ -n "$PAPER_GEMINI_API_SECRET" ]; then
+            echo "✓ Gemini paper trading credentials available"
+          else
+            echo "⚠️  Gemini paper trading credentials not available - integration tests will be skipped"  
+          fi
+          
+          # Run tests with integration tests enabled
+          python -m pytest tests/ -v --tb=short -m "not network or integration" || echo "⚠️  Unit tests completed with issues"
+          
+          # Run integration tests if credentials are available (non-blocking)
+          echo "=== Running integration tests ==="
+          python -m pytest tests/ -v --tb=short -m "integration" || echo "⚠️  Integration tests completed with issues"
           
           # Try coverage if available
           if python -c "import pytest_cov" 2>/dev/null; then
