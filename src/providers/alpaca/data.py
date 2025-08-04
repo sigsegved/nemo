@@ -20,6 +20,10 @@ class AlpacaDataProvider(DataProvider):
             config: Provider-specific configuration
         """
         self.config = config
+        self.api_key = config.get("API_KEY", "")
+        self.api_secret = config.get("API_SECRET", "")
+        self.rest_url = config.get("REST_URL", "https://paper-api.alpaca.markets/v2")
+        self.ws_url = config.get("WS_URL", "wss://stream.data.alpaca.markets/v2/iex")
     
     async def connect(self) -> None:
         """Establish connection to data source."""

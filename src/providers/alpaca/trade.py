@@ -21,6 +21,9 @@ class AlpacaTradeProvider(TradeProvider):
             config: Provider-specific configuration
         """
         self.config = config
+        self.api_key = config.get("API_KEY", "")
+        self.api_secret = config.get("API_SECRET", "")
+        self.rest_url = config.get("REST_URL", "https://paper-api.alpaca.markets/v2")
     
     async def submit_order(
         self, symbol: str, side: str, amount: Decimal, tif: str = "IOC"
