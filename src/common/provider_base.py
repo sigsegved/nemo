@@ -13,9 +13,10 @@ and REST connection patterns:
 """
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, List
+from collections.abc import AsyncIterator
 from decimal import Decimal
-from .models import TradeTick, MarketEvent, OrderAck, Position
+
+from .models import MarketEvent, OrderAck, Position, TradeTick
 
 
 class DataProvider(ABC):
@@ -27,12 +28,12 @@ class DataProvider(ABC):
         pass
 
     @abstractmethod
-    async def subscribe_trades(self, symbols: List[str]) -> None:
+    async def subscribe_trades(self, symbols: list[str]) -> None:
         """Subscribe to trade data for given symbols."""
         pass
 
     @abstractmethod
-    async def subscribe_events(self, symbols: List[str]) -> None:
+    async def subscribe_events(self, symbols: list[str]) -> None:
         """Subscribe to market events (mark-price, funding, liquidations)."""
         pass
 
@@ -87,7 +88,7 @@ class TradeProvider(ABC):
         pass
 
     @abstractmethod
-    async def fetch_positions(self) -> List[Position]:
+    async def fetch_positions(self) -> list[Position]:
         """Fetch all current positions."""
         pass
 

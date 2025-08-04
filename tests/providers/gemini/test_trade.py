@@ -10,21 +10,22 @@ These tests cover the Gemini trade provider REST API implementation, including:
 - Integration tests with sandbox environment
 """
 
+import base64
 import hashlib
 import hmac
-import base64
 import json
 import os
-import pytest
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
-from typing import Dict, Any
-import aiohttp
-from aiohttp import ClientSession, ClientResponse
+from typing import Any, Dict
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-from src.providers.gemini.trade import GeminiTradeProvider
+import aiohttp
+import pytest
+from aiohttp import ClientResponse, ClientSession
+
 from src.common.models import OrderAck, Position
+from src.providers.gemini.trade import GeminiTradeProvider
 
 
 class TestGeminiTradeProviderConfiguration:
@@ -34,7 +35,7 @@ class TestGeminiTradeProviderConfiguration:
         """Test initialization with default configuration."""
         config = {}
         provider = GeminiTradeProvider(config)
-        
+
         assert provider.config == config
         assert provider.api_key == ""
         assert provider.api_secret == ""
@@ -47,10 +48,10 @@ class TestGeminiTradeProviderConfiguration:
         config = {
             "API_KEY": "test_key",
             "API_SECRET": "test_secret",
-            "REST_URL": "https://sandbox-api.gemini.com"
+            "REST_URL": "https://sandbox-api.gemini.com",
         }
         provider = GeminiTradeProvider(config)
-        
+
         assert provider.config == config
         assert provider.api_key == "test_key"
         assert provider.api_secret == "test_secret"
@@ -58,11 +59,9 @@ class TestGeminiTradeProviderConfiguration:
 
     def test_init_with_partial_config(self):
         """Test initialization with partial configuration."""
-        config = {
-            "API_KEY": "partial_key"
-        }
+        config = {"API_KEY": "partial_key"}
         provider = GeminiTradeProvider(config)
-        
+
         assert provider.api_key == "partial_key"
         assert provider.api_secret == ""  # Default empty
         assert provider.rest_url == "https://api.sandbox.gemini.com"  # Default
@@ -76,7 +75,7 @@ class TestGeminiTradeProviderAuthentication:
         """Create a provider instance for testing."""
         config = {
             "API_KEY": "test_key",
-            "API_SECRET": "test_secret_key_for_hmac_testing"
+            "API_SECRET": "test_secret_key_for_hmac_testing",
         }
         return GeminiTradeProvider(config)
 
@@ -86,25 +85,21 @@ class TestGeminiTradeProviderAuthentication:
         payload = {"request": "/v1/order/new", "nonce": 123456789}
         json_payload = json.dumps(payload)
         encoded_payload = base64.b64encode(json_payload.encode())
-        
+
         # Test signature creation (concept from real implementation)
         signature = hmac.new(
-            provider.api_secret.encode(),
-            encoded_payload,
-            hashlib.sha384
+            provider.api_secret.encode(), encoded_payload, hashlib.sha384
         ).hexdigest()
-        
+
         # Verify signature is properly formatted
         assert isinstance(signature, str)
         assert len(signature) > 0
-        
+
         # Manually compute expected signature for verification
         expected_signature = hmac.new(
-            provider.api_secret.encode(),
-            encoded_payload,
-            hashlib.sha384
+            provider.api_secret.encode(), encoded_payload, hashlib.sha384
         ).hexdigest()
-        
+
         assert signature == expected_signature
 
     def test_create_headers_concept(self, provider):
@@ -113,27 +108,25 @@ class TestGeminiTradeProviderAuthentication:
         payload = {"request": "/v1/order/new", "nonce": 123456789}
         json_payload = json.dumps(payload)
         encoded_payload = base64.b64encode(json_payload.encode())
-        
+
         signature = hmac.new(
-            provider.api_secret.encode(),
-            encoded_payload,
-            hashlib.sha384
+            provider.api_secret.encode(), encoded_payload, hashlib.sha384
         ).hexdigest()
-        
+
         # Headers as created in real implementation
         headers = {
             "Content-Type": "text/plain",
             "Content-Length": "0",
             "X-GEMINI-APIKEY": provider.api_key,
             "X-GEMINI-PAYLOAD": encoded_payload.decode(),
-            "X-GEMINI-SIGNATURE": signature
+            "X-GEMINI-SIGNATURE": signature,
         }
-        
+
         assert "X-GEMINI-APIKEY" in headers
         assert "X-GEMINI-PAYLOAD" in headers
         assert "X-GEMINI-SIGNATURE" in headers
         assert "Content-Type" in headers
-        
+
         assert headers["X-GEMINI-APIKEY"] == provider.api_key
         assert headers["Content-Type"] == "text/plain"
 
@@ -141,10 +134,11 @@ class TestGeminiTradeProviderAuthentication:
         """Test nonce generation concept."""
         # The real implementation uses str(int(time.time() * 1000))
         import time
+
         nonce1 = str(int(time.time() * 1000))
         time.sleep(0.001)  # Small delay
         nonce2 = str(int(time.time() * 1000))
-        
+
         # Nonces should be different and increasing
         assert isinstance(nonce1, str)
         assert isinstance(nonce2, str)
@@ -156,20 +150,21 @@ class TestGeminiTradeProviderAuthentication:
         endpoint = "/v1/order/new"
         symbol = "btcgusdperp"
         amount = "1.0"
-        
+
         # Payload structure as used in real implementation
         import time
+
         payload = {
             "request": endpoint,
             "nonce": str(int(time.time() * 1000)),
-            "symbol": symbol, 
+            "symbol": symbol,
             "amount": amount,
             "price": "50000.00",
             "side": "buy",
             "type": "exchange limit",
-            "options": ["immediate-or-cancel"]
+            "options": ["immediate-or-cancel"],
         }
-        
+
         assert payload["request"] == endpoint
         assert "nonce" in payload
         assert payload["symbol"] == symbol
@@ -183,21 +178,18 @@ class TestGeminiTradeProviderConnection:
     @pytest.fixture
     def provider(self):
         """Create a provider instance for testing."""
-        config = {
-            "API_KEY": "test_key",
-            "API_SECRET": "test_secret"
-        }
+        config = {"API_KEY": "test_key", "API_SECRET": "test_secret"}
         return GeminiTradeProvider(config)
 
     @pytest.mark.asyncio
     async def test_connect_success(self, provider):
         """Test successful connection."""
-        with patch('aiohttp.ClientSession') as mock_session_class:
+        with patch("aiohttp.ClientSession") as mock_session_class:
             mock_session = AsyncMock()
             mock_session_class.return_value = mock_session
-            
+
             await provider.connect()
-            
+
             assert provider.connected
             assert provider.session is mock_session
 
@@ -206,8 +198,10 @@ class TestGeminiTradeProviderConnection:
         """Test connection failure with missing credentials."""
         provider.api_key = ""
         provider.api_secret = ""
-        
-        with pytest.raises(ValueError, match="API_KEY and API_SECRET must be configured"):
+
+        with pytest.raises(
+            ValueError, match="API_KEY and API_SECRET must be configured"
+        ):
             await provider.connect()
 
     @pytest.mark.asyncio
@@ -224,9 +218,9 @@ class TestGeminiTradeProviderConnection:
         mock_session = AsyncMock()
         provider.session = mock_session
         provider.connected = True
-        
+
         await provider.disconnect()
-        
+
         assert not provider.connected
         assert provider.session is None
         mock_session.close.assert_called_once()
@@ -238,10 +232,7 @@ class TestGeminiTradeProviderOrderManagement:
     @pytest.fixture
     def provider(self):
         """Create a connected provider instance for testing."""
-        config = {
-            "API_KEY": "test_key",
-            "API_SECRET": "test_secret"
-        }
+        config = {"API_KEY": "test_key", "API_SECRET": "test_secret"}
         provider = GeminiTradeProvider(config)
         provider.connected = True
         provider.session = AsyncMock()
@@ -253,21 +244,25 @@ class TestGeminiTradeProviderOrderManagement:
         # Mock successful API response
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(return_value={
-            "order_id": "test_order_123",
-            "symbol": "btcgusdperp",
-            "side": "buy",
-            "amount": "1000.00",
-            "price": "50000.00",
-            "type": "exchange limit",
-            "timestamp": "1640995200",
-            "is_live": True
-        })
-        
+        mock_response.json = AsyncMock(
+            return_value={
+                "order_id": "test_order_123",
+                "symbol": "btcgusdperp",
+                "side": "buy",
+                "amount": "1000.00",
+                "price": "50000.00",
+                "type": "exchange limit",
+                "timestamp": "1640995200",
+                "is_live": True,
+            }
+        )
+
         provider.session.post = AsyncMock(return_value=mock_response)
-        
-        order_ack = await provider.submit_order("BTC-GUSD-PERP", "buy", Decimal("1000.00"), "IOC")
-        
+
+        order_ack = await provider.submit_order(
+            "BTC-GUSD-PERP", "buy", Decimal("1000.00"), "IOC"
+        )
+
         assert isinstance(order_ack, OrderAck)
         assert order_ack.order_id == "test_order_123"
         assert order_ack.symbol == "BTC-GUSD-PERP"
@@ -282,16 +277,20 @@ class TestGeminiTradeProviderOrderManagement:
         # Mock failed API response
         mock_response = AsyncMock()
         mock_response.status = 400
-        mock_response.json = AsyncMock(return_value={
-            "result": "error",
-            "reason": "InsufficientFunds",
-            "message": "Insufficient funds"
-        })
-        
+        mock_response.json = AsyncMock(
+            return_value={
+                "result": "error",
+                "reason": "InsufficientFunds",
+                "message": "Insufficient funds",
+            }
+        )
+
         provider.session.post = AsyncMock(return_value=mock_response)
-        
-        order_ack = await provider.submit_order("BTC-GUSD-PERP", "buy", Decimal("1000.00"))
-        
+
+        order_ack = await provider.submit_order(
+            "BTC-GUSD-PERP", "buy", Decimal("1000.00")
+        )
+
         assert isinstance(order_ack, OrderAck)
         assert order_ack.status == "rejected"
         assert "Insufficient funds" in order_ack.message
@@ -300,7 +299,7 @@ class TestGeminiTradeProviderOrderManagement:
     async def test_submit_order_not_connected(self, provider):
         """Test order submission when not connected."""
         provider.connected = False
-        
+
         with pytest.raises(RuntimeError, match="Not connected"):
             await provider.submit_order("BTC-GUSD-PERP", "buy", Decimal("1000.00"))
 
@@ -310,30 +309,36 @@ class TestGeminiTradeProviderOrderManagement:
         # Mock position query response
         mock_positions_response = AsyncMock()
         mock_positions_response.status = 200
-        mock_positions_response.json = AsyncMock(return_value=[
-            {
-                "account": "primary",
-                "symbol": "btcgusdperp",
-                "amount": "0.5",
-                "avg_cost_basis": "45000.00",
-                "type": "exchange"
-            }
-        ])
-        
+        mock_positions_response.json = AsyncMock(
+            return_value=[
+                {
+                    "account": "primary",
+                    "symbol": "btcgusdperp",
+                    "amount": "0.5",
+                    "avg_cost_basis": "45000.00",
+                    "type": "exchange",
+                }
+            ]
+        )
+
         # Mock order submission response
         mock_order_response = AsyncMock()
         mock_order_response.status = 200
-        mock_order_response.json = AsyncMock(return_value={
-            "order_id": "close_order_123",
-            "symbol": "btcgusdperp",
-            "side": "sell",
-            "amount": "0.5"
-        })
-        
-        provider.session.post = AsyncMock(side_effect=[mock_positions_response, mock_order_response])
-        
+        mock_order_response.json = AsyncMock(
+            return_value={
+                "order_id": "close_order_123",
+                "symbol": "btcgusdperp",
+                "side": "sell",
+                "amount": "0.5",
+            }
+        )
+
+        provider.session.post = AsyncMock(
+            side_effect=[mock_positions_response, mock_order_response]
+        )
+
         close_ack = await provider.close_position("BTC-GUSD-PERP")
-        
+
         assert isinstance(close_ack, OrderAck)
         assert close_ack.order_id == "close_order_123"
         assert close_ack.symbol == "BTC-GUSD-PERP"
@@ -346,11 +351,11 @@ class TestGeminiTradeProviderOrderManagement:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value=[])
-        
+
         provider.session.post = AsyncMock(return_value=mock_response)
-        
+
         close_ack = await provider.close_position("BTC-GUSD-PERP")
-        
+
         assert close_ack.status == "rejected"
         assert "No position found" in close_ack.message
 
@@ -361,10 +366,7 @@ class TestGeminiTradeProviderPositionManagement:
     @pytest.fixture
     def provider(self):
         """Create a connected provider instance for testing."""
-        config = {
-            "API_KEY": "test_key",
-            "API_SECRET": "test_secret"
-        }
+        config = {"API_KEY": "test_key", "API_SECRET": "test_secret"}
         provider = GeminiTradeProvider(config)
         provider.connected = True
         provider.session = AsyncMock()
@@ -376,30 +378,32 @@ class TestGeminiTradeProviderPositionManagement:
         # Mock API response with positions
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(return_value=[
-            {
-                "account": "primary",
-                "symbol": "btcgusdperp",
-                "amount": "0.5",
-                "avg_cost_basis": "45000.00",
-                "type": "exchange"
-            },
-            {
-                "account": "primary", 
-                "symbol": "ethgusdperp",
-                "amount": "-1.0",
-                "avg_cost_basis": "3000.00",
-                "type": "exchange"
-            }
-        ])
-        
+        mock_response.json = AsyncMock(
+            return_value=[
+                {
+                    "account": "primary",
+                    "symbol": "btcgusdperp",
+                    "amount": "0.5",
+                    "avg_cost_basis": "45000.00",
+                    "type": "exchange",
+                },
+                {
+                    "account": "primary",
+                    "symbol": "ethgusdperp",
+                    "amount": "-1.0",
+                    "avg_cost_basis": "3000.00",
+                    "type": "exchange",
+                },
+            ]
+        )
+
         provider.session.post = AsyncMock(return_value=mock_response)
-        
+
         positions = await provider.fetch_positions()
-        
+
         assert isinstance(positions, list)
         assert len(positions) == 2
-        
+
         # Check first position (long BTC)
         btc_pos = positions[0]
         assert isinstance(btc_pos, Position)
@@ -407,7 +411,7 @@ class TestGeminiTradeProviderPositionManagement:
         assert btc_pos.side == "long"
         assert btc_pos.size == Decimal("0.5")
         assert btc_pos.entry_price == Decimal("45000.00")
-        
+
         # Check second position (short ETH)
         eth_pos = positions[1]
         assert eth_pos.symbol == "ETH-GUSD-PERP"
@@ -420,11 +424,11 @@ class TestGeminiTradeProviderPositionManagement:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value=[])
-        
+
         provider.session.post = AsyncMock(return_value=mock_response)
-        
+
         positions = await provider.fetch_positions()
-        
+
         assert isinstance(positions, list)
         assert len(positions) == 0
 
@@ -434,27 +438,31 @@ class TestGeminiTradeProviderPositionManagement:
         # Mock balances API response
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(return_value=[
-            {
-                "type": "exchange",
-                "currency": "USD",
-                "amount": "50000.00",
-                "available": "45000.00"
-            },
-            {
-                "type": "exchange",
-                "currency": "BTC",
-                "amount": "1.0",
-                "available": "0.8"
-            }
-        ])
-        
+        mock_response.json = AsyncMock(
+            return_value=[
+                {
+                    "type": "exchange",
+                    "currency": "USD",
+                    "amount": "50000.00",
+                    "available": "45000.00",
+                },
+                {
+                    "type": "exchange",
+                    "currency": "BTC",
+                    "amount": "1.0",
+                    "available": "0.8",
+                },
+            ]
+        )
+
         provider.session.post = AsyncMock(return_value=mock_response)
-        
+
         # Mock price conversion
-        with patch.object(provider, '_convert_to_usd', return_value=Decimal("55000.00")):
+        with patch.object(
+            provider, "_convert_to_usd", return_value=Decimal("55000.00")
+        ):
             equity = await provider.get_account_equity()
-        
+
         assert isinstance(equity, Decimal)
         assert equity > Decimal("0")
 
@@ -463,19 +471,21 @@ class TestGeminiTradeProviderPositionManagement:
         """Test account equity calculation with USD only."""
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(return_value=[
-            {
-                "type": "exchange",
-                "currency": "USD", 
-                "amount": "75000.00",
-                "available": "70000.00"
-            }
-        ])
-        
+        mock_response.json = AsyncMock(
+            return_value=[
+                {
+                    "type": "exchange",
+                    "currency": "USD",
+                    "amount": "75000.00",
+                    "available": "70000.00",
+                }
+            ]
+        )
+
         provider.session.post = AsyncMock(return_value=mock_response)
-        
+
         equity = await provider.get_account_equity()
-        
+
         assert equity == Decimal("75000.00")
 
 
@@ -493,9 +503,9 @@ class TestGeminiTradeProviderSymbolMapping:
             ("BTC-GUSD-PERP", "btcgusdperp"),
             ("ETH-GUSD-PERP", "ethgusdperp"),
             ("SOL-GUSD-PERP", "solgusdperp"),
-            ("DOGE-GUSD-PERP", "dogegusdperp")
+            ("DOGE-GUSD-PERP", "dogegusdperp"),
         ]
-        
+
         for standard, expected in test_cases:
             # This matches the real implementation logic
             result = standard.replace("-", "").lower()
@@ -508,27 +518,28 @@ class TestGeminiTradeProviderSymbolMapping:
             ("BTCGUSDPERP", "BTC-GUSD-PERP"),
             ("ETHGUSDPERP", "ETH-GUSD-PERP"),
             ("SOLGUSDPERP", "SOL-GUSD-PERP"),
-            ("DOGEGUSDPERP", "DOGE-GUSD-PERP")
+            ("DOGEGUSDPERP", "DOGE-GUSD-PERP"),
         ]
-        
+
         # Symbol mapping as used in real implementation
         symbol_map = {
             "BTCGUSDPERP": "BTC-GUSD-PERP",
             "ETHGUSDPERP": "ETH-GUSD-PERP",
             "SOLGUSDPERP": "SOL-GUSD-PERP",
-            "DOGEGUSDPERP": "DOGE-GUSD-PERP"
+            "DOGEGUSDPERP": "DOGE-GUSD-PERP",
         }
-        
+
         for gemini, expected in test_cases:
             result = symbol_map.get(gemini, gemini)
             assert result == expected
 
     def test_side_mapping_concept(self, provider):
         """Test side mapping concept for positions."""
+
         # The real implementation determines side from balance amount
         def get_position_side(amount):
             return "long" if amount > 0 else "short"
-            
+
         assert get_position_side(Decimal("1.0")) == "long"
         assert get_position_side(Decimal("-1.0")) == "short"
         assert get_position_side(Decimal("0.5")) == "long"
@@ -541,10 +552,7 @@ class TestGeminiTradeProviderErrorHandling:
     @pytest.fixture
     def provider(self):
         """Create a connected provider instance for testing."""
-        config = {
-            "API_KEY": "test_key",
-            "API_SECRET": "test_secret"
-        }
+        config = {"API_KEY": "test_key", "API_SECRET": "test_secret"}
         provider = GeminiTradeProvider(config)
         provider.connected = True
         provider.session = AsyncMock()
@@ -554,20 +562,27 @@ class TestGeminiTradeProviderErrorHandling:
     async def test_api_timeout_handling(self, provider):
         """Test handling of API timeout errors."""
         import asyncio
+
         provider.session.post = AsyncMock(side_effect=asyncio.TimeoutError())
-        
-        order_ack = await provider.submit_order("BTC-GUSD-PERP", "buy", Decimal("1000.00"))
-        
+
+        order_ack = await provider.submit_order(
+            "BTC-GUSD-PERP", "buy", Decimal("1000.00")
+        )
+
         assert order_ack.status == "rejected"
         assert "timeout" in order_ack.message.lower()
 
     @pytest.mark.asyncio
     async def test_network_error_handling(self, provider):
         """Test handling of network errors."""
-        provider.session.post = AsyncMock(side_effect=aiohttp.ClientError("Network error"))
-        
-        order_ack = await provider.submit_order("BTC-GUSD-PERP", "buy", Decimal("1000.00"))
-        
+        provider.session.post = AsyncMock(
+            side_effect=aiohttp.ClientError("Network error")
+        )
+
+        order_ack = await provider.submit_order(
+            "BTC-GUSD-PERP", "buy", Decimal("1000.00")
+        )
+
         assert order_ack.status == "rejected"
         assert "Network error" in order_ack.message
 
@@ -576,12 +591,16 @@ class TestGeminiTradeProviderErrorHandling:
         """Test handling of invalid JSON response."""
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(side_effect=json.JSONDecodeError("Invalid JSON", "", 0))
-        
+        mock_response.json = AsyncMock(
+            side_effect=json.JSONDecodeError("Invalid JSON", "", 0)
+        )
+
         provider.session.post = AsyncMock(return_value=mock_response)
-        
-        order_ack = await provider.submit_order("BTC-GUSD-PERP", "buy", Decimal("1000.00"))
-        
+
+        order_ack = await provider.submit_order(
+            "BTC-GUSD-PERP", "buy", Decimal("1000.00")
+        )
+
         assert order_ack.status == "rejected"
         assert "parsing" in order_ack.message.lower()
 
@@ -601,9 +620,9 @@ class TestGeminiTradeProviderHelpers:
         test_cases = [
             (Decimal("1000.00"), "1000.00"),
             (Decimal("0.123456"), "0.123456"),
-            (Decimal("50000"), "50000")
+            (Decimal("50000"), "50000"),
         ]
-        
+
         for decimal_val, expected in test_cases:
             result = str(decimal_val)
             assert result == expected
@@ -612,9 +631,10 @@ class TestGeminiTradeProviderHelpers:
         """Test timestamp parsing concept."""
         # The real implementation uses datetime.now() for timestamps
         from datetime import datetime
+
         timestamp_str = "1640995200"  # Unix timestamp string
         dt = datetime.fromtimestamp(int(timestamp_str))
-        
+
         assert isinstance(dt, datetime)
         assert dt.year == 2022
 
@@ -633,7 +653,7 @@ class TestGeminiTradeProviderHelpers:
         # This tests the concept
         btc_amount = Decimal("1.0")
         btc_price = Decimal("50000.00")  # Mock price
-        
+
         usd_value = btc_amount * btc_price
         assert usd_value == Decimal("50000.00")
 
@@ -643,12 +663,14 @@ class TestGeminiTradeProviderHelpers:
             {"currency": "USD", "amount": "1000.00"},
             {"currency": "BTC", "amount": "0.5"},
             {"currency": "ETH", "amount": "0.0"},  # Zero balance
-            {"currency": "SOL", "amount": "10.0"}
+            {"currency": "SOL", "amount": "10.0"},
         ]
-        
+
         # Filter concept as would be used in real implementation
-        non_zero_balances = [b for b in balances if Decimal(str(b["amount"])) != Decimal("0")]
-        
+        non_zero_balances = [
+            b for b in balances if Decimal(str(b["amount"])) != Decimal("0")
+        ]
+
         assert len(non_zero_balances) == 3  # Excludes ETH with 0.0 balance
         currencies = [b["currency"] for b in non_zero_balances]
         assert "ETH" not in currencies
@@ -664,7 +686,7 @@ class TestGeminiTradeProviderIntegration:
         config = {
             "API_KEY": "test_key",
             "API_SECRET": "test_secret",
-            "REST_URL": "https://api.sandbox.gemini.com"
+            "REST_URL": "https://api.sandbox.gemini.com",
         }
         return GeminiTradeProvider(config)
 
@@ -673,59 +695,67 @@ class TestGeminiTradeProviderIntegration:
         """Test complete trading workflow (mocked)."""
         # Mock session
         mock_session = AsyncMock()
-        
+
         # Mock successful order response
         mock_order_response = AsyncMock()
         mock_order_response.status = 200
-        mock_order_response.json = AsyncMock(return_value={
-            "order_id": "workflow_test_123",
-            "symbol": "btcgusdperp",
-            "side": "buy",
-            "amount": "1000.00",
-            "is_live": True
-        })
-        
+        mock_order_response.json = AsyncMock(
+            return_value={
+                "order_id": "workflow_test_123",
+                "symbol": "btcgusdperp",
+                "side": "buy",
+                "amount": "1000.00",
+                "is_live": True,
+            }
+        )
+
         # Mock positions response
         mock_positions_response = AsyncMock()
         mock_positions_response.status = 200
-        mock_positions_response.json = AsyncMock(return_value=[
-            {
-                "symbol": "btcgusdperp",
-                "amount": "0.02",
-                "avg_cost_basis": "50000.00"
-            }
-        ])
-        
+        mock_positions_response.json = AsyncMock(
+            return_value=[
+                {
+                    "symbol": "btcgusdperp",
+                    "amount": "0.02",
+                    "avg_cost_basis": "50000.00",
+                }
+            ]
+        )
+
         # Mock balance response
         mock_balance_response = AsyncMock()
         mock_balance_response.status = 200
-        mock_balance_response.json = AsyncMock(return_value=[
-            {"currency": "USD", "amount": "95000.00"}
-        ])
-        
-        mock_session.post = AsyncMock(side_effect=[
-            mock_order_response,    # submit_order
-            mock_positions_response, # fetch_positions  
-            mock_balance_response   # get_account_equity
-        ])
-        
-        with patch('aiohttp.ClientSession', return_value=mock_session):
+        mock_balance_response.json = AsyncMock(
+            return_value=[{"currency": "USD", "amount": "95000.00"}]
+        )
+
+        mock_session.post = AsyncMock(
+            side_effect=[
+                mock_order_response,  # submit_order
+                mock_positions_response,  # fetch_positions
+                mock_balance_response,  # get_account_equity
+            ]
+        )
+
+        with patch("aiohttp.ClientSession", return_value=mock_session):
             # Execute complete workflow
             await provider.connect()
-            
+
             # Submit order
-            order_ack = await provider.submit_order("BTC-GUSD-PERP", "buy", Decimal("1000.00"))
+            order_ack = await provider.submit_order(
+                "BTC-GUSD-PERP", "buy", Decimal("1000.00")
+            )
             assert order_ack.status == "filled"
-            
+
             # Check positions
             positions = await provider.fetch_positions()
             assert len(positions) == 1
             assert positions[0].symbol == "BTC-GUSD-PERP"
-            
+
             # Check equity
             equity = await provider.get_account_equity()
             assert equity == Decimal("95000.00")
-            
+
             await provider.disconnect()
 
 
@@ -737,14 +767,14 @@ class TestGeminiTradeProviderSandboxIntegration:
         """Get sandbox configuration from environment."""
         api_key = os.getenv("PAPER_GEMINI_API_KEY")
         api_secret = os.getenv("PAPER_GEMINI_API_SECRET")
-        
+
         if not api_key or not api_secret:
             pytest.skip("Sandbox credentials not available in environment")
-        
+
         return {
             "API_KEY": api_key,
             "API_SECRET": api_secret,
-            "REST_URL": "https://api.sandbox.gemini.com"
+            "REST_URL": "https://api.sandbox.gemini.com",
         }
 
     @pytest.mark.integration
@@ -752,39 +782,41 @@ class TestGeminiTradeProviderSandboxIntegration:
         """Test if environment credentials are available for integration tests."""
         api_key = os.getenv("PAPER_GEMINI_API_KEY")
         api_secret = os.getenv("PAPER_GEMINI_API_SECRET")
-        
+
         if api_key and api_secret:
             config = {
                 "API_KEY": api_key,
                 "API_SECRET": api_secret,
-                "REST_URL": "https://api.sandbox.gemini.com"
+                "REST_URL": "https://api.sandbox.gemini.com",
             }
             provider = GeminiTradeProvider(config)
-            
+
             # Basic configuration validation
             assert provider.rest_url == "https://api.sandbox.gemini.com"
             assert provider.api_key == api_key
             assert provider.api_secret == api_secret
             assert not provider.connected  # Should not be connected yet
         else:
-            pytest.skip("PAPER_GEMINI_API_KEY and PAPER_GEMINI_API_SECRET not found in environment")
+            pytest.skip(
+                "PAPER_GEMINI_API_KEY and PAPER_GEMINI_API_SECRET not found in environment"
+            )
 
-    @pytest.mark.integration 
+    @pytest.mark.integration
     @pytest.mark.network
     async def test_sandbox_connection(self, sandbox_config):
         """Test real connection to Gemini sandbox API (if credentials available)."""
         provider = GeminiTradeProvider(sandbox_config)
-        
+
         try:
             # This would test a real connection - should be skipped if credentials not available
             await provider.connect()
             assert provider.connected
-            
+
             # Test basic account access
             equity = await provider.get_account_equity()
             assert isinstance(equity, Decimal)
             assert equity >= 0
-            
+
         except Exception as e:
             # If connection fails due to network or credentials, that's expected
             pytest.skip(f"Cannot connect to sandbox: {e}")
@@ -793,28 +825,28 @@ class TestGeminiTradeProviderSandboxIntegration:
                 await provider.disconnect()
 
     @pytest.mark.integration
-    @pytest.mark.network  
+    @pytest.mark.network
     async def test_sandbox_order_submission(self, sandbox_config):
         """Test order submission to sandbox (if credentials available)."""
         provider = GeminiTradeProvider(sandbox_config)
-        
+
         try:
             await provider.connect()
-            
+
             # Submit a small test order
             order_ack = await provider.submit_order(
-                "BTC-GUSD-PERP", 
-                "buy", 
+                "BTC-GUSD-PERP",
+                "buy",
                 Decimal("10.00"),  # Small $10 order
-                "IOC"
+                "IOC",
             )
-            
+
             # Check that we got some response
             assert isinstance(order_ack, OrderAck)
             assert order_ack.symbol == "BTC-GUSD-PERP"
             assert order_ack.side == "buy"
             assert order_ack.amount == Decimal("10.00")
-            
+
         except Exception as e:
             # If order fails due to insufficient funds or API issues, that's expected in sandbox
             pytest.skip(f"Cannot submit order to sandbox: {e}")
@@ -826,7 +858,7 @@ class TestGeminiTradeProviderSandboxIntegration:
     def test_sandbox_url_configuration(self, sandbox_config):
         """Test that sandbox URLs are properly configured."""
         provider = GeminiTradeProvider(sandbox_config)
-        
+
         # Verify sandbox endpoint is used
         assert "sandbox" in provider.rest_url
         assert provider.rest_url == "https://api.sandbox.gemini.com"
@@ -835,19 +867,19 @@ class TestGeminiTradeProviderSandboxIntegration:
     async def test_sandbox_account_operations(self, sandbox_config):
         """Test basic account operations with sandbox."""
         provider = GeminiTradeProvider(sandbox_config)
-        
+
         try:
             await provider.connect()
-            
+
             # Test fetching positions (should work even if empty)
             positions = await provider.fetch_positions()
             assert isinstance(positions, list)
-            
+
             # Test fetching account equity (should return a Decimal)
             equity = await provider.get_account_equity()
             assert isinstance(equity, Decimal)
             assert equity >= 0
-            
+
         except Exception as e:
             pytest.skip(f"Cannot perform account operations: {e}")
         finally:

@@ -52,21 +52,11 @@ jobs:
         python -c "import aiohttp; print(f'✓ aiohttp {aiohttp.__version__}')"
         python -c "import websocket; print(f'✓ websocket-client installed')"
 
-    - name: Lint with black
+    - name: Lint and format with ruff
       run: |
-        echo "=== Black formatting check ==="
-        black --check --diff src/ tests/ || echo "⚠️  Code formatting issues found"
-
-    - name: Lint with flake8
-      run: |
-        echo "=== Flake8 linting ==="
-        flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics --ignore=W503
-
-    - name: Type check with mypy
-      run: |
-        echo "=== MyPy type checking ==="
-        mypy src/ --ignore-missing-imports || echo "⚠️  Type checking completed with warnings"
+        echo "=== Ruff linting and formatting ==="
+        ruff check src/ tests/ --output-format=github
+        ruff format --check src/ tests/
 
     - name: Run tests
       env:

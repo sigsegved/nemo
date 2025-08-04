@@ -11,18 +11,19 @@ This module contains data structures for:
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
+
 from pydantic import BaseModel, computed_field
 
 
 class TradeTick(BaseModel):
     """Model for trade tick data with properties for volatility calculations."""
-    
+
     symbol: str
     price: Decimal  # Last trade price
     size: Decimal  # Trade size
     timestamp: datetime
     side: str  # 'buy' or 'sell'
-    
+
     # Properties for volatility and spread analysis
     bid_price: Optional[Decimal] = None  # Best bid price at time of trade
     ask_price: Optional[Decimal] = None  # Best ask price at time of trade
@@ -59,7 +60,7 @@ class TradeTick(BaseModel):
 
 class MarketEvent(BaseModel):
     """Model for market events (mark-price, funding, liquidations)."""
-    
+
     symbol: str
     event_type: str
     value: Decimal
@@ -68,7 +69,7 @@ class MarketEvent(BaseModel):
 
 class OrderAck(BaseModel):
     """Model for order acknowledgment."""
-    
+
     order_id: str
     symbol: str
     side: str
@@ -81,7 +82,7 @@ class OrderAck(BaseModel):
 
 class Position(BaseModel):
     """Model for trading position."""
-    
+
     symbol: str
     side: str
     size: Decimal

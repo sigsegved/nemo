@@ -8,12 +8,13 @@ This module tests Pydantic data models for:
 - Position for trading positions
 """
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
+
+import pytest
 from pydantic import ValidationError
 
-from src.common.models import TradeTick, MarketEvent, OrderAck, Position
+from src.common.models import MarketEvent, OrderAck, Position, TradeTick
 
 
 class TestTradeTick:
@@ -26,9 +27,9 @@ class TestTradeTick:
             price=Decimal("50000.00"),
             size=Decimal("0.1"),
             timestamp=datetime.now(),
-            side="buy"
+            side="buy",
         )
-        
+
         assert tick.symbol == "BTCUSD"
         assert tick.price == Decimal("50000.00")
         assert tick.size == Decimal("0.1")
@@ -50,9 +51,9 @@ class TestTradeTick:
             low=Decimal("2950.00"),
             open_price=Decimal("2980.00"),
             volume=Decimal("1000.0"),
-            trade_count=150
+            trade_count=150,
         )
-        
+
         assert tick.bid_price == Decimal("2999.50")
         assert tick.ask_price == Decimal("3000.50")
         assert tick.high == Decimal("3050.00")
@@ -70,9 +71,9 @@ class TestTradeTick:
             timestamp=datetime.now(),
             side="buy",
             bid_price=Decimal("149.95"),
-            ask_price=Decimal("150.05")
+            ask_price=Decimal("150.05"),
         )
-        
+
         assert tick.spread == Decimal("0.10")
 
     def test_spread_calculation_missing_data(self):
@@ -82,9 +83,9 @@ class TestTradeTick:
             price=Decimal("150.00"),
             size=Decimal("100"),
             timestamp=datetime.now(),
-            side="buy"
+            side="buy",
         )
-        
+
         assert tick.spread is None
 
     def test_mid_price_calculation(self):
@@ -96,9 +97,9 @@ class TestTradeTick:
             timestamp=datetime.now(),
             side="buy",
             bid_price=Decimal("2799.00"),
-            ask_price=Decimal("2801.00")
+            ask_price=Decimal("2801.00"),
         )
-        
+
         assert tick.mid_price == Decimal("2800.00")
 
     def test_mid_price_calculation_missing_data(self):
@@ -109,9 +110,9 @@ class TestTradeTick:
             size=Decimal("10"),
             timestamp=datetime.now(),
             side="buy",
-            bid_price=Decimal("2799.00")
+            bid_price=Decimal("2799.00"),
         )
-        
+
         assert tick.mid_price is None
 
     def test_price_range_calculation(self):
@@ -123,9 +124,9 @@ class TestTradeTick:
             timestamp=datetime.now(),
             side="sell",
             high=Decimal("820.00"),
-            low=Decimal("780.00")
+            low=Decimal("780.00"),
         )
-        
+
         assert tick.price_range == Decimal("40.00")
 
     def test_price_range_calculation_missing_data(self):
@@ -136,9 +137,9 @@ class TestTradeTick:
             size=Decimal("50"),
             timestamp=datetime.now(),
             side="sell",
-            high=Decimal("820.00")
+            high=Decimal("820.00"),
         )
-        
+
         assert tick.price_range is None
 
     def test_invalid_side(self):
@@ -150,9 +151,9 @@ class TestTradeTick:
             price=Decimal("50000.00"),
             size=Decimal("0.1"),
             timestamp=datetime.now(),
-            side="invalid_side"
+            side="invalid_side",
         )
-        
+
         assert tick.side == "invalid_side"  # Currently allows any string
 
     def test_json_serialization(self):
@@ -165,11 +166,11 @@ class TestTradeTick:
             timestamp=timestamp,
             side="buy",
             bid_price=Decimal("49999.50"),
-            ask_price=Decimal("50000.50")
+            ask_price=Decimal("50000.50"),
         )
-        
+
         json_data = tick.model_dump()
-        
+
         assert json_data["symbol"] == "BTCUSD"
         assert json_data["price"] == Decimal("50000.00")
         assert json_data["side"] == "buy"
@@ -185,9 +186,9 @@ class TestMarketEvent:
             symbol="BTCUSD",
             event_type="mark_price",
             value=Decimal("50000.00"),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
-        
+
         assert event.symbol == "BTCUSD"
         assert event.event_type == "mark_price"
         assert event.value == Decimal("50000.00")
@@ -200,9 +201,9 @@ class TestMarketEvent:
             symbol="ETHUSD-PERP",
             event_type="funding_rate",
             value=Decimal("0.0001"),
-            timestamp=timestamp
+            timestamp=timestamp,
         )
-        
+
         assert event.event_type == "funding_rate"
         assert event.value == Decimal("0.0001")
 
@@ -212,9 +213,9 @@ class TestMarketEvent:
             symbol="BTCUSD",
             event_type="liquidation",
             value=Decimal("1000000.00"),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
-        
+
         assert event.event_type == "liquidation"
         assert event.value == Decimal("1000000.00")
 
@@ -231,9 +232,9 @@ class TestOrderAck:
             amount=Decimal("1000.00"),
             status="filled",
             timestamp=datetime.now(),
-            tif="IOC"
+            tif="IOC",
         )
-        
+
         assert ack.order_id == "12345"
         assert ack.symbol == "AAPL"
         assert ack.side == "buy"
@@ -250,9 +251,9 @@ class TestOrderAck:
             status="partial",
             timestamp=datetime.now(),
             tif="GTC",
-            message="Partially filled: 50 shares"
+            message="Partially filled: 50 shares",
         )
-        
+
         assert ack.message == "Partially filled: 50 shares"
 
     def test_order_ack_without_message(self):
@@ -264,9 +265,9 @@ class TestOrderAck:
             amount=Decimal("5000.00"),
             status="filled",
             timestamp=datetime.now(),
-            tif="IOC"
+            tif="IOC",
         )
-        
+
         assert ack.message is None
 
 
@@ -282,9 +283,9 @@ class TestPosition:
             entry_price=Decimal("45000.00"),
             current_price=Decimal("50000.00"),
             unrealized_pnl=Decimal("2500.00"),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
-        
+
         assert position.symbol == "BTCUSD"
         assert position.side == "long"
         assert position.size == Decimal("0.5")
@@ -301,9 +302,9 @@ class TestPosition:
             entry_price=Decimal("3200.00"),
             current_price=Decimal("3000.00"),
             unrealized_pnl=Decimal("400.00"),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
-        
+
         assert position.side == "short"
         assert position.unrealized_pnl == Decimal("400.00")
 
@@ -328,9 +329,9 @@ class TestModelValidation:
             price="50000.00",  # String should be converted to Decimal
             size="0.1",
             timestamp=datetime.now(),
-            side="buy"
+            side="buy",
         )
-        
+
         assert isinstance(tick.price, Decimal)
         assert isinstance(tick.size, Decimal)
 
@@ -341,7 +342,7 @@ class TestModelValidation:
             price=Decimal("50000.00"),
             size=Decimal("0.1"),
             timestamp=datetime.now(),
-            side="buy"
+            side="buy",
         )
-        
+
         assert isinstance(tick.timestamp, datetime)
