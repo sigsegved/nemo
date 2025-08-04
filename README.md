@@ -143,6 +143,46 @@ The bot is configured through `config.yaml`. Key configuration sections include:
 
 🚧 **This project is currently in foundation setup phase**. The directory structure and configuration templates are in place, but core functionality is still under development.
 
+### Continuous Integration
+
+The project includes a comprehensive CI/CD pipeline using GitHub Actions that:
+
+- **Multi-Python Support**: Tests against Python 3.9, 3.10, 3.11, and 3.12
+- **Code Quality**: Enforces formatting (Black), linting (Flake8), and type checking (MyPy)
+- **Testing**: Runs comprehensive test suite with coverage reporting
+- **Security**: Scans dependencies for known vulnerabilities
+- **Resilient**: Graceful degradation for early-stage development issues
+
+See [docs/CI.md](docs/CI.md) for detailed CI documentation.
+
+### Quick Quality Checks
+
+```bash
+# Install development dependencies
+pip install -r requirements-ci.txt
+
+# Format code
+black src/ tests/
+
+# Lint code
+flake8 src/ tests/
+
+# Type check
+mypy src/
+
+# Run tests
+pytest tests/ -v
+```
+
+### Pre-commit Hooks (Optional)
+
+For automated code quality checks on commit:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
 ### Development Roadmap
 
 1. **Phase 1: Foundation** ✅
@@ -190,6 +230,8 @@ The bot is configured through `config.yaml`. Key configuration sections include:
 
 ### Testing
 
+The project includes comprehensive testing infrastructure:
+
 ```bash
 # Run all tests
 pytest
@@ -199,7 +241,21 @@ pytest --cov=src --cov-report=html
 
 # Run specific test categories
 pytest -m "not slow"  # Skip slow tests
+pytest -m "unit"      # Run only unit tests
+pytest -m "integration"  # Run only integration tests
 ```
+
+**Test Categories** (using pytest markers):
+- `unit`: Fast, isolated unit tests
+- `integration`: Tests that involve multiple components
+- `slow`: Long-running tests (e.g., backtests)
+- `network`: Tests requiring network access
+- `asyncio`: Async/await test functions
+
+**CI Testing**: The GitHub Actions pipeline automatically runs tests on:
+- All Python versions (3.9-3.12)
+- Pull requests and pushes to main/develop
+- Multiple dependency configurations for reliability
 
 ## Security Considerations
 

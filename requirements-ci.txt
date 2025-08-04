@@ -1,0 +1,45 @@
+# CI-specific requirements - excludes packages that are problematic in CI environments
+# Core Dependencies
+pydantic>=2.0.0
+pyyaml>=6.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# HTTP and WebSocket
+websocket-client>=1.6.0
+requests>=2.31.0
+
+# Analysis (excluding ta-lib due to compilation issues)
+scipy>=1.11.0
+scikit-learn>=1.3.0
+
+# Database and Storage
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+
+# Async and Concurrency
+aiohttp>=3.8.0
+
+# Logging and Monitoring
+structlog>=23.0.0
+
+# Development and Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
+pre-commit>=3.0.0
+
+# Configuration and Environment
+python-dotenv>=1.0.0
+click>=8.1.0
+
+# Security scanning
+safety>=2.3.0
+
+# Optional: Only install if available
+# alpaca-py>=0.20.0  # May have dependency issues
+# ta-lib>=0.4.25     # Requires compilation
+# uvloop>=0.17.0     # Unix only, may cause issues

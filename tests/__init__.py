@@ -1,1 +1,1 @@
-# Tests for the Nemo trading bot
+# Tests for the Nemo trading system
