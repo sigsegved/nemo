@@ -51,7 +51,7 @@ This document provides comprehensive guidance for AI coding assistants working o
 - **Formatting**: Use `black` for consistent code formatting
 - **Linting**: Follow `flake8` rules for code quality
 - **Documentation**: Include docstrings for all public functions and classes
-- **Testing**: Write tests for new functionality using pytest
+- **Testing**: **MANDATORY** - All PRs must include comprehensive tests using pytest
 
 ### Python Patterns Used
 - **Pydantic Models**: Use for data validation and configuration management
@@ -123,12 +123,12 @@ This document provides comprehensive guidance for AI coding assistants working o
 
 ## Testing Approach
 
-### Test Categories
-- **Unit Tests**: Test individual functions and classes
-- **Integration Tests**: Test provider integrations
-- **Strategy Tests**: Test trading logic with mock data
-- **End-to-End Tests**: Test complete trading workflows
-- **Performance Tests**: Validate latency requirements
+### Testing Requirements (MANDATORY)
+- **All PRs must include tests** - No exceptions for new functionality
+- **Coverage Requirements**: Minimum 80% test coverage for new code
+- **Test Categories**: Unit, integration, strategy, and end-to-end tests
+- **Mock External Services**: Always mock API calls and network dependencies
+- **Test Both Success and Failure**: Include edge cases and error scenarios
 
 ### Testing Best Practices
 - Use `pytest` fixtures for setup and teardown
@@ -310,14 +310,15 @@ When working on the Nemo codebase:
    - [ ] Review relevant documentation and code
 
 3. **Development Process**
-   - [ ] Create focused tests for new functionality
+   - [ ] **Create comprehensive tests first** (TDD approach recommended)
    - [ ] Implement changes with minimal modifications
    - [ ] Run tests frequently: `pytest -x`
    - [ ] Check formatting: `black src/`
    - [ ] Validate type hints: `mypy src/`
 
-4. **Before Committing**
-   - [ ] All tests pass: `pytest`
+4. **Before Committing** 
+   - [ ] **All tests pass**: `pytest` (MANDATORY)
+   - [ ] **Test coverage verified**: Check coverage reports
    - [ ] Code is formatted: `black src/`
    - [ ] Type checking passes: `mypy src/`
    - [ ] Documentation is updated
