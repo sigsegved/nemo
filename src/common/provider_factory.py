@@ -54,6 +54,9 @@ class ProviderFactory:
             ValueError: If provider is not registered or configured
             NotImplementedError: If provider implementation is not available
         """
+        if self.config is None:
+            raise ValueError("Configuration is None")
+        
         if provider_name is None:
             provider_name = self.config.get("providers", {}).get("data", {}).get("primary")
         
@@ -106,7 +109,7 @@ class ProviderFactory:
         """
         provider_config = {
             "credentials": self.config.get("credentials", {}).get(provider_name, {}),
-            "trading_config": self.config.get("trading", {}),
+            "trading": self.config.get("trading", {}),
             "paper_trading": self.config.get("providers", {}).get("trade", {}).get("paper_trading", True),
         }
         
@@ -170,13 +173,13 @@ class TradeProviderFactory:
     
     def create_primary_provider(self) -> TradeProvider:
         """Create primary trade provider with validation."""
-        provider = self.factory.create_trade_provider()
-        
-        # Validate paper trading settings
+        # Validate paper trading settings first
         paper_trading = self.config.get("providers", {}).get("trade", {}).get("paper_trading", True)
         if not paper_trading:
             # Additional validation for live trading
             self._validate_live_trading_config()
+        
+        provider = self.factory.create_trade_provider()
         
         return provider
     
