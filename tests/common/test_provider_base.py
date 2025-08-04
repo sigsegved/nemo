@@ -92,6 +92,7 @@ class MockTradeProvider(TradeProvider):
             amount=amount,
             status="filled",
             timestamp=datetime.now(),
+            tif=tif,
             message=f"Mock order for {amount} {symbol}"
         )
     
@@ -104,6 +105,7 @@ class MockTradeProvider(TradeProvider):
             amount=Decimal("0"),
             status="filled",
             timestamp=datetime.now(),
+            tif="IOC",
             message=f"Closed position for {symbol}"
         )
     

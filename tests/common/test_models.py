@@ -230,7 +230,8 @@ class TestOrderAck:
             side="buy",
             amount=Decimal("1000.00"),
             status="filled",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
+            tif="IOC"
         )
         
         assert ack.order_id == "12345"
@@ -248,6 +249,7 @@ class TestOrderAck:
             amount=Decimal("5000.00"),
             status="partial",
             timestamp=datetime.now(),
+            tif="GTC",
             message="Partially filled: 50 shares"
         )
         
@@ -261,7 +263,8 @@ class TestOrderAck:
             side="sell",
             amount=Decimal("5000.00"),
             status="filled",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
+            tif="IOC"
         )
         
         assert ack.message is None
