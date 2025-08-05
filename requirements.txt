@@ -13,6 +13,7 @@ requests>=2.31.0               # HTTP client for REST APIs
 scipy>=1.11.0                  # Scientific computing for statistics
 scikit-learn>=1.3.0            # Machine learning algorithms
 ta-lib>=0.4.25                 # Technical analysis library
+numba>=0.58.0                  # JIT compilation for performance optimization
 
 # Database and Storage
 sqlalchemy>=2.0.0              # Database ORM
