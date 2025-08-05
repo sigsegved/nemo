@@ -143,7 +143,7 @@ class VWAPCalculator:
         valid_trades = []
         
         for trade in self.price_volume_buffer.get_items():
-            if trade and trade['timestamp'] >= cutoff_time and trade['timestamp'] <= as_of_time:
+            if trade and trade['timestamp'] > cutoff_time and trade['timestamp'] <= as_of_time:
                 valid_trades.append(trade)
         
         if not valid_trades:
@@ -183,17 +183,28 @@ class VWAPCalculator:
         # For now, fallback to Python implementation
         return self._calculate_vwap_python(trades)
     
-    def get_deviation_from_current_price(self, current_price: Union[Decimal, float]) -> Optional[Decimal]:
+    def get_deviation_from_current_price(self, current_price: Union[Decimal, float], 
+                                         as_of_time: Optional[datetime] = None) -> Optional[Decimal]:
         """
         Calculate percentage deviation of current price from VWAP.
         
         Args:
             current_price: Current market price
+            as_of_time: Calculate VWAP as of this time. If None, uses latest trade time.
             
         Returns:
             Percentage deviation (e.g., 0.01 for 1% above VWAP)
         """
-        vwap = self.calculate_vwap()
+        # If no specific time given, use the latest trade time or current time
+        if as_of_time is None:
+            # Get the latest trade time from buffer
+            items = self.price_volume_buffer.get_items()
+            if items:
+                as_of_time = max(item['timestamp'] for item in items if item)
+            else:
+                as_of_time = datetime.now()
+        
+        vwap = self.calculate_vwap(as_of_time)
         if vwap is None or vwap == 0:
             return None
         
@@ -233,21 +244,22 @@ class MultiTimeframeVWAP:
         for calculator in self.calculators.values():
             calculator.add_trade(price, volume, timestamp)
     
-    def get_vwap(self, timeframe: str) -> Optional[Decimal]:
+    def get_vwap(self, timeframe: str, as_of_time: Optional[datetime] = None) -> Optional[Decimal]:
         """Get VWAP for specific timeframe."""
         if timeframe not in self.calculators:
             raise ValueError(f"Unsupported timeframe: {timeframe}")
-        return self.calculators[timeframe].calculate_vwap()
+        return self.calculators[timeframe].calculate_vwap(as_of_time)
     
-    def get_all_vwaps(self) -> dict:
+    def get_all_vwaps(self, as_of_time: Optional[datetime] = None) -> dict:
         """Get VWAPs for all timeframes."""
-        return {tf: calc.calculate_vwap() for tf, calc in self.calculators.items()}
+        return {tf: calc.calculate_vwap(as_of_time) for tf, calc in self.calculators.items()}
     
-    def get_deviation(self, timeframe: str, current_price: Union[Decimal, float]) -> Optional[Decimal]:
+    def get_deviation(self, timeframe: str, current_price: Union[Decimal, float], 
+                     as_of_time: Optional[datetime] = None) -> Optional[Decimal]:
         """Get price deviation from VWAP for specific timeframe."""
         if timeframe not in self.calculators:
             raise ValueError(f"Unsupported timeframe: {timeframe}")
-        return self.calculators[timeframe].get_deviation_from_current_price(current_price)
+        return self.calculators[timeframe].get_deviation_from_current_price(current_price, as_of_time)
 
 
 class VolumeAggregator:
@@ -288,7 +300,7 @@ class VolumeAggregator:
         total_volume = Decimal('0')
         
         for volume_data in self.volume_buffer.get_items():
-            if (volume_data and volume_data['timestamp'] >= cutoff_time 
+            if (volume_data and volume_data['timestamp'] > cutoff_time 
                 and volume_data['timestamp'] <= as_of_time):
                 total_volume += volume_data['volume']
         
@@ -315,8 +327,8 @@ class VolumeAggregator:
             
             period_volume = Decimal('0')
             for volume_data in self.volume_buffer.get_items():
-                if (volume_data and volume_data['timestamp'] >= period_start 
-                    and volume_data['timestamp'] < period_end):
+                if (volume_data and volume_data['timestamp'] > period_start 
+                    and volume_data['timestamp'] <= period_end):
                     period_volume += volume_data['volume']
             
             volumes.append(period_volume)

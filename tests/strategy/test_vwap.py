@@ -205,8 +205,8 @@ class TestMultiTimeframeVWAP:
         """Test getting VWAP for specific timeframe."""
         self.mtf_vwap.add_trade(Decimal('100'), Decimal('10'), self.base_time)
         
-        vwap_3min = self.mtf_vwap.get_vwap('3min')
-        vwap_30min = self.mtf_vwap.get_vwap('30min')
+        vwap_3min = self.mtf_vwap.get_vwap('3min', self.base_time)
+        vwap_30min = self.mtf_vwap.get_vwap('30min', self.base_time)
         
         assert vwap_3min == Decimal('100')
         assert vwap_30min == Decimal('100')
@@ -215,7 +215,7 @@ class TestMultiTimeframeVWAP:
         """Test getting all VWAPs at once."""
         self.mtf_vwap.add_trade(Decimal('100'), Decimal('10'), self.base_time)
         
-        all_vwaps = self.mtf_vwap.get_all_vwaps()
+        all_vwaps = self.mtf_vwap.get_all_vwaps(self.base_time)
         
         assert len(all_vwaps) == 4
         for timeframe in ['3min', '30min', '1hour', '4hour']:
@@ -225,10 +225,10 @@ class TestMultiTimeframeVWAP:
     def test_invalid_timeframe_error(self):
         """Test error on invalid timeframe."""
         with pytest.raises(ValueError, match="Unsupported timeframe"):
-            self.mtf_vwap.get_vwap('invalid')
+            self.mtf_vwap.get_vwap('invalid', self.base_time)
         
         with pytest.raises(ValueError, match="Unsupported timeframe"):
-            self.mtf_vwap.get_deviation('invalid', Decimal('100'))
+            self.mtf_vwap.get_deviation('invalid', Decimal('100'), self.base_time)
 
 
 class TestVolumeAggregator:

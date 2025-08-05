@@ -93,7 +93,7 @@ class PriceDeviationTrigger:
             return None
         
         # Calculate deviation
-        deviation = self.vwap_calculator.get_deviation_from_current_price(current_price)
+        deviation = self.vwap_calculator.get_deviation_from_current_price(current_price, timestamp)
         if deviation is None:
             return None
         
@@ -387,16 +387,19 @@ class TriggerEngine:
         if len(self.signal_history) > self.max_history_length:
             self.signal_history = self.signal_history[-self.max_history_length:]
     
-    def get_recent_signals(self, minutes: int = 60) -> List[TriggerSignal]:
+    def get_recent_signals(self, minutes: int = 60, as_of_time: Optional[datetime] = None) -> List[TriggerSignal]:
         """Get signals from the last N minutes."""
-        cutoff_time = datetime.now() - timedelta(minutes=minutes)
+        if as_of_time is None:
+            as_of_time = datetime.now()
+        
+        cutoff_time = as_of_time - timedelta(minutes=minutes)
         
         return [signal for signal in self.signal_history 
                 if signal.timestamp >= cutoff_time]
     
-    def get_signal_counts(self, minutes: int = 60) -> Dict[TriggerType, int]:
+    def get_signal_counts(self, minutes: int = 60, as_of_time: Optional[datetime] = None) -> Dict[TriggerType, int]:
         """Get count of signals by type in the last N minutes."""
-        recent_signals = self.get_recent_signals(minutes)
+        recent_signals = self.get_recent_signals(minutes, as_of_time)
         
         counts = {trigger_type: 0 for trigger_type in TriggerType}
         
