@@ -306,18 +306,11 @@ class TestGeminiTradeProviderOrderManagement:
     @pytest.mark.asyncio
     async def test_submit_order_failure(self, provider):
         """Test order submission failure."""
-        # Mock failed API response
-        mock_response = AsyncMock()
-        mock_response.status = 400
-        mock_response.json = AsyncMock(
-            return_value={
-                "result": "error",
-                "reason": "InsufficientFunds",
-                "message": "Insufficient funds",
-            }
-        )
-
-        provider.session.post = AsyncMock(return_value=mock_response)
+        # Set up provider mocks for failure case
+        provider.session = AsyncMock()
+        provider.connected = True
+        provider.session.post = Mock(return_value=MockResponse(400, {}, "Insufficient funds"))
+        provider.session.get = Mock(return_value=MockResponse(200, {"last": "50000.00"}))
 
         order_ack = await provider.submit_order(
             "BTC-GUSD-PERP", "buy", Decimal("1000.00")
