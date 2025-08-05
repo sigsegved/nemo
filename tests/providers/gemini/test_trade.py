@@ -28,6 +28,42 @@ from src.common.models import OrderAck, Position
 from src.providers.gemini.trade import GeminiTradeProvider
 
 
+class MockResponse:
+    """Mock aiohttp response that supports async context manager protocol."""
+
+    def __init__(self, status=200, json_data=None, text_data=""):
+        self.status = status
+        self._json_data = json_data or {}
+        self._text_data = text_data
+
+    async def json(self):
+        return self._json_data
+
+    async def text(self):
+        return self._text_data
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return False
+
+
+def setup_provider_mocks(provider, post_response_data=None, get_response_data=None):
+    """Helper to set up provider session mocks properly."""
+    if not hasattr(provider, 'session') or provider.session is None:
+        provider.session = AsyncMock()
+        provider.connected = True
+
+    # Default responses
+    post_data = post_response_data or {"order_id": "test_123", "is_live": False}
+    get_data = get_response_data or {"last": "50000.00"}
+
+    # Set up mocks with proper async context managers
+    provider.session.post = Mock(return_value=MockResponse(200, post_data))
+    provider.session.get = Mock(return_value=MockResponse(200, get_data))
+
+
 class TestGeminiTradeProviderConfiguration:
     """Test Gemini trade provider configuration."""
 
@@ -186,6 +222,7 @@ class TestGeminiTradeProviderConnection:
         """Test successful connection."""
         with patch("aiohttp.ClientSession") as mock_session_class:
             mock_session = AsyncMock()
+            mock_session.post = Mock(return_value=MockResponse(200, {"account": "test"}))
             mock_session_class.return_value = mock_session
 
             await provider.connect()
@@ -241,23 +278,18 @@ class TestGeminiTradeProviderOrderManagement:
     @pytest.mark.asyncio
     async def test_submit_order_success(self, provider):
         """Test successful order submission."""
-        # Mock successful API response
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.json = AsyncMock(
-            return_value={
-                "order_id": "test_order_123",
-                "symbol": "btcgusdperp",
-                "side": "buy",
-                "amount": "1000.00",
-                "price": "50000.00",
-                "type": "exchange limit",
-                "timestamp": "1640995200",
-                "is_live": True,
-            }
-        )
-
-        provider.session.post = AsyncMock(return_value=mock_response)
+        # Set up provider mocks
+        order_data = {
+            "order_id": "test_order_123",
+            "symbol": "btcgusdperp",
+            "side": "buy",
+            "amount": "1000.00",
+            "price": "50000.00",
+            "type": "exchange limit",
+            "timestamp": "1640995200",
+            "is_live": False,  # False means filled
+        }
+        setup_provider_mocks(provider, post_response_data=order_data)
 
         order_ack = await provider.submit_order(
             "BTC-GUSD-PERP", "buy", Decimal("1000.00"), "IOC"
