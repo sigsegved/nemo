@@ -51,7 +51,7 @@ class MockResponse:
 
 def setup_provider_mocks(provider, post_response_data=None, get_response_data=None):
     """Helper to set up provider session mocks properly."""
-    if not hasattr(provider, 'session') or provider.session is None:
+    if not hasattr(provider, "session") or provider.session is None:
         provider.session = AsyncMock()
         provider.connected = True
 
@@ -222,7 +222,9 @@ class TestGeminiTradeProviderConnection:
         """Test successful connection."""
         with patch("aiohttp.ClientSession") as mock_session_class:
             mock_session = AsyncMock()
-            mock_session.post = Mock(return_value=MockResponse(200, {"account": "test"}))
+            mock_session.post = Mock(
+                return_value=MockResponse(200, {"account": "test"})
+            )
             mock_session_class.return_value = mock_session
 
             await provider.connect()
@@ -309,8 +311,12 @@ class TestGeminiTradeProviderOrderManagement:
         # Set up provider mocks for failure case
         provider.session = AsyncMock()
         provider.connected = True
-        provider.session.post = Mock(return_value=MockResponse(400, {}, "Insufficient funds"))
-        provider.session.get = Mock(return_value=MockResponse(200, {"last": "50000.00"}))
+        provider.session.post = Mock(
+            return_value=MockResponse(400, {}, "Insufficient funds")
+        )
+        provider.session.get = Mock(
+            return_value=MockResponse(200, {"last": "50000.00"})
+        )
 
         order_ack = await provider.submit_order(
             "BTC-GUSD-PERP", "buy", Decimal("1000.00")
