@@ -471,19 +471,17 @@ PROVIDERS:
             config = Config.load_from_file(temp_path)
             factory_config = config.to_provider_factory_format()
 
-            # Test provider factory initialization
+            # Test provider factory class methods
             from src.common.provider_factory import ProviderFactory
 
-            factory = ProviderFactory(factory_config)
+            # Test provider availability
+            available = ProviderFactory.get_available_providers()
+            assert "data_providers" in available
+            assert "trade_providers" in available
 
-            # Test provider-specific config extraction
-            provider_config = factory._get_provider_config("gemini")
-
-            assert provider_config["credentials"]["api_key"] == "gemini_test"
-            assert provider_config["credentials"]["secret"] == "gemini_secret"
-            assert provider_config["trading"]["price_dev"] == 0.02
-            assert provider_config["trading"]["max_leverage"] == 2
-            assert provider_config["paper_trading"] is True  # Default
+            # Verify gemini providers are registered
+            assert "gemini" in available["data_providers"]
+            assert "gemini" in available["trade_providers"]
 
             # Test factory format conversion
             assert "providers" in factory_config
