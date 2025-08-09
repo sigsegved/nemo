@@ -337,3 +337,4 @@ class VolumeAggregator:
             return None
         
         return sum(volumes) / Decimal(str(len(volumes)))
+

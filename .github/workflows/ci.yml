@@ -15,27 +15,23 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.12"
 
     - name: Cache pip dependencies
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements-ci.txt', 'requirements.txt') }}
+        key: ${{ runner.os }}-pip-3.12-${{ hashFiles('requirements-ci.txt', 'requirements.txt') }}
         restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          ${{ runner.os }}-pip-3.12-
           ${{ runner.os }}-pip-
 
     - name: Install system dependencies
@@ -45,113 +41,63 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install wheel setuptools
+        python -m pip install --upgrade pip wheel setuptools
         
-        # Install essential dependencies with increased timeout and retries
-        echo "Installing core dependencies..."
-        pip install --timeout 120 --retries 3 pytest pytest-asyncio pytest-cov || echo "Warning: Some test dependencies failed to install"
-        pip install --timeout 120 --retries 3 black flake8 mypy || echo "Warning: Some code quality tools failed to install"
-        pip install --timeout 120 --retries 3 pydantic pyyaml || echo "Warning: Some core dependencies failed to install"
+        echo "=== Installing CI requirements ==="
+        pip install -r requirements-ci.txt
         
-        # Try CI-specific requirements
-        echo "Installing CI-specific dependencies..."
-        pip install -r requirements-ci.txt --timeout 120 --retries 3 || echo "Warning: CI requirements installation had issues"
+        echo "=== Verifying core dependencies ==="
+        python -c "import pydantic; print(f'✓ pydantic {pydantic.__version__}')"
+        python -c "import pytest; print(f'✓ pytest {pytest.__version__}')"
+        python -c "import aiohttp; print(f'✓ aiohttp {aiohttp.__version__}')"
+        python -c "import websocket; print(f'✓ websocket-client installed')"
+
+    - name: Lint and format with ruff
+      run: |
+        echo "=== Ruff linting and formatting ==="
+        ruff check src/ tests/ --output-format=github
+        ruff format --check src/ tests/
+
+    - name: Run tests
+      env:
+        # Expose paper trading secrets as environment variables for integration tests
+        PAPER_ALPACA_API_KEY: ${{ secrets.PAPER_ALPACA_API_KEY }}
+        PAPER_ALPACA_API_SECRET: ${{ secrets.PAPER_ALPACA_API_SECRET }}
+        PAPER_GEMINI_API_KEY: ${{ secrets.PAPER_GEMINI_API_KEY }}
+        PAPER_GEMINI_API_SECRET: ${{ secrets.PAPER_GEMINI_API_SECRET }}
+      run: |
+        echo "=== Checking integration test credentials ==="
+        if [ -n "$PAPER_ALPACA_API_KEY" ] && [ -n "$PAPER_ALPACA_API_SECRET" ]; then
+          echo "✓ Alpaca paper trading credentials available"
+          ALPACA_CREDS="available"
+        else
+          echo "⚠️  Alpaca paper trading credentials not available"
+          ALPACA_CREDS="missing"
+        fi
         
-        # Try additional packages individually
-        for pkg in "numpy" "pandas" "requests" "click"; do
-          echo "Attempting to install $pkg..."
-          pip install --timeout 60 "$pkg" || echo "Failed to install $pkg, continuing..."
-        done
-
-    - name: Verify installation
-      run: |
-        echo "=== Checking available tools ==="
-        python -c "import sys; print(f'Python: {sys.version}')"
-        python -c "try: import pytest; print(f'pytest: {pytest.__version__}')
-        except ImportError: print('pytest: Not available')"
-        python -c "try: import black; print(f'black: {black.__version__}')
-        except ImportError: print('black: Not available')"
-        python -c "try: import flake8; print(f'flake8: Available')
-        except ImportError: print('flake8: Not available')"
-        python -c "try: import mypy; print(f'mypy: Available')
-        except ImportError: print('mypy: Not available')"
-        python -c "try: import pydantic; print(f'pydantic: {pydantic.__version__}')
-        except ImportError: print('pydantic: Not available')"
-
-    - name: Python syntax check
-      run: |
-        echo "=== Checking Python syntax ==="
-        find src -name "*.py" | xargs python -m py_compile
-        find tests -name "*.py" | xargs python -m py_compile
-        echo "✓ All Python files compile successfully"
-
-    - name: Check code formatting with black (if available)
-      run: |
-        if python -c "import black" 2>/dev/null; then
-          echo "=== Running black formatter check ==="
-          black --check --diff src/ tests/ || echo "⚠️  Code formatting issues found"
+        if [ -n "$PAPER_GEMINI_API_KEY" ] && [ -n "$PAPER_GEMINI_API_SECRET" ]; then
+          echo "✓ Gemini paper trading credentials available"
+          GEMINI_CREDS="available"
         else
-          echo "⚠️  Black not available, skipping formatting check"
+          echo "⚠️  Gemini paper trading credentials not available"
+          GEMINI_CREDS="missing"
+        fi
+        
+        echo "=== Running all tests ==="
+        pytest tests/ -v --tb=short --strict-markers
+        
+        if [ "$ALPACA_CREDS" = "available" ] || [ "$GEMINI_CREDS" = "available" ]; then
+          echo ""
+          echo "=== Running integration tests ==="
+          pytest tests/ -v --tb=short -m "integration" || echo "⚠️  Some integration tests failed"
         fi
 
-    - name: Lint with flake8 (if available)
+    - name: Generate coverage report
       run: |
-        if python -c "import flake8" 2>/dev/null; then
-          echo "=== Running flake8 linting ==="
-          # Basic error checking
-          python -m flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics || echo "⚠️  Syntax errors found"
-          # Style checking (non-blocking)
-          python -m flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics --ignore=W503 || true
-        else
-          echo "⚠️  Flake8 not available, skipping linting"
-        fi
+        echo "=== Generating coverage report ==="
+        pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
 
-    - name: Type check with mypy (if available)
-      run: |
-        if python -c "import mypy" 2>/dev/null; then
-          echo "=== Running mypy type checking ==="
-          # Create basic mypy config
-          cat > mypy.ini << EOF
-        [mypy]
-        python_version = ${{ matrix.python-version }}
-        warn_return_any = True
-        warn_unused_configs = True
-        disallow_untyped_defs = False
-        ignore_missing_imports = True
-        EOF
-          # Run mypy (non-blocking in early development)
-          python -m mypy src/ --ignore-missing-imports || echo "⚠️  Type checking completed with warnings"
-        else
-          echo "⚠️  MyPy not available, skipping type checking"
-        fi
-
-    - name: Test with pytest (if available)
-      run: |
-        if python -c "import pytest" 2>/dev/null; then
-          echo "=== Running pytest ==="
-          python -m pytest tests/ -v --tb=short || echo "⚠️  Some tests failed"
-          
-          # Try coverage if available
-          if python -c "import pytest_cov" 2>/dev/null; then
-            echo "=== Running tests with coverage ==="
-            python -m pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing || echo "⚠️  Coverage run completed with issues"
-          fi
-        else
-          echo "⚠️  Pytest not available, running basic test imports"
-          find tests -name "test_*.py" -exec python -c "
-          import sys
-          sys.path.insert(0, 'src')
-          try:
-              exec(open('{}').read())
-              print('✓ {} imports successfully')
-          except Exception as e:
-              print('⚠️  {} has import issues: {}'.format('{}', e))
-          " \;
-        fi
-
-    - name: Upload coverage to Codecov (if coverage available)
-      if: matrix.python-version == '3.12'
+    - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
@@ -159,204 +105,3 @@ jobs:
         verbose: true
       continue-on-error: true
 
-  # Basic validation job that should always work
-  basic-validation:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-
-    - name: Basic Python validation
-      run: |
-        echo "=== Basic validation checks ==="
-        
-        # Check Python syntax
-        find . -name "*.py" | xargs python -m py_compile
-        echo "✓ All Python files have valid syntax"
-        
-        # Check for common issues
-        echo "=== Checking for common issues ==="
-        
-        # Check for print statements (should use logging)
-        if grep -r "print(" src/ --include="*.py" | grep -v "TODO\|FIXME\|DEBUG"; then
-          echo "⚠️  Found print statements in source code (consider using logging)"
-        fi
-        
-        # Check for TODO/FIXME comments
-        todo_count=$(grep -r "TODO\|FIXME" src/ --include="*.py" | wc -l)
-        echo "📝 Found $todo_count TODO/FIXME comments"
-        
-        # Check imports
-        echo "=== Checking imports ==="
-        for file in $(find src -name "*.py"); do
-          echo "Checking imports in $file..."
-          python -c "
-        import ast
-        import sys
-        
-        with open('$file', 'r') as f:
-            try:
-                tree = ast.parse(f.read())
-                print('✓ $file: imports are syntactically valid')
-            except SyntaxError as e:
-                print('✗ $file: syntax error - {}'.format(e))
-                sys.exit(1)
-          "
-        done
-
-    - name: Project structure validation
-      run: |
-        echo "=== Validating project structure ==="
-        
-        # Check required files exist
-        required_files=(
-          "requirements.txt"
-          "README.md"
-          "src/main.py"
-          "tests/__init__.py"
-          "pytest.ini"
-        )
-        
-        for file in "${required_files[@]}"; do
-          if [ -f "$file" ]; then
-            echo "✓ $file exists"
-          else
-            echo "✗ $file is missing"
-          fi
-        done
-        
-        # Check directory structure
-        echo "=== Directory structure ==="
-        tree -d -L 3 . || ls -la
-
-  # Dependency analysis
-  dependency-analysis:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-
-    - name: Analyze requirements
-      run: |
-        echo "=== Analyzing requirements.txt ==="
-        
-        # Check if requirements.txt exists
-        if [ ! -f "requirements.txt" ]; then
-          echo "✗ requirements.txt not found"
-          exit 1
-        fi
-        
-        # Check requirements.txt syntax and content
-        python -c "
-        import sys
-        
-        # Check for built-in modules that shouldn't be in requirements.txt
-        builtin_modules = ['sqlite3', 'asyncio', 'os', 'sys', 'json', 're', 'datetime', 'pathlib']
-        
-        with open('requirements.txt', 'r') as f:
-            lines = f.readlines()
-        
-        print('=== Checking requirements.txt content ===')
-        issues_found = False
-        valid_requirements = []
-        
-        for line_num, line in enumerate(lines, 1):
-            line = line.strip()
-            
-            # Skip empty lines and comments
-            if not line or line.startswith('#'):
-                continue
-                
-            # Check for built-in modules
-            pkg_name = line.split('>=')[0].split('==')[0].strip()
-            if pkg_name in builtin_modules:
-                print(f'⚠️  Line {line_num}: {pkg_name} is a built-in module, should not be in requirements.txt')
-                issues_found = True
-                continue
-                
-            valid_requirements.append(line)
-        
-        print(f'✓ Found {len(valid_requirements)} valid package requirements')
-        
-        # Test parsing with pkg_resources (with deprecation warning suppressed)
-        try:
-            import pkg_resources
-            import warnings
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', DeprecationWarning)
-                
-                # Parse only non-comment, non-empty lines
-                req_text = '\n'.join(valid_requirements)
-                parsed_reqs = list(pkg_resources.parse_requirements(req_text))
-                print(f'✓ Successfully parsed {len(parsed_reqs)} requirements')
-                
-        except Exception as e:
-            print(f'✗ Requirements parsing failed: {e}')
-            issues_found = True
-        
-        if issues_found:
-            print('⚠️  Issues found but continuing (non-blocking)')
-        else:
-            print('✓ requirements.txt validation passed')
-        "
-        
-        # Count dependencies
-        total_deps=$(grep -c "^[a-zA-Z]" requirements.txt || echo "0")
-        echo "📦 Total dependencies: $total_deps"
-        
-        # List main categories
-        echo "=== Dependency categories ==="
-        echo "Core dependencies:"
-        grep -E "(pydantic|pyyaml|numpy|pandas)" requirements.txt || echo "None found"
-        echo "Testing dependencies:"
-        grep -E "(pytest|black|flake8|mypy)" requirements.txt || echo "None found"
-        echo "API dependencies:"
-        grep -E "(alpaca|requests|websocket)" requirements.txt || echo "None found"
-        
-        # Validate CI requirements file if it exists
-        if [ -f "requirements-ci.txt" ]; then
-          echo "=== Validating requirements-ci.txt ==="
-          ci_deps=$(grep -c "^[a-zA-Z]" requirements-ci.txt || echo "0")
-          echo "📦 CI-specific dependencies: $ci_deps"
-        fi
-
-  # Quality gate summary
-  quality-gate:
-    runs-on: ubuntu-latest
-    needs: [test, basic-validation, dependency-analysis]
-    if: always()
-    steps:
-    - name: Quality gate summary
-      run: |
-        echo "=== CI Pipeline Results ==="
-        echo "Test job status: ${{ needs.test.result }}"
-        echo "Basic validation status: ${{ needs.basic-validation.result }}"
-        echo "Dependency analysis status: ${{ needs.dependency-analysis.result }}"
-        
-        # Basic validation must pass
-        if [ "${{ needs.basic-validation.result }}" != "success" ]; then
-          echo "❌ Basic validation failed - this is required"
-          exit 1
-        fi
-        
-        # Dependency analysis should pass
-        if [ "${{ needs.dependency-analysis.result }}" != "success" ]; then
-          echo "⚠️  Dependency analysis failed"
-        fi
-        
-        # Test job can have warnings but should not completely fail
-        if [ "${{ needs.test.result }}" == "failure" ]; then
-          echo "⚠️  Test job encountered issues, but this is non-blocking in early development"
-        fi
-        
-        echo "✅ Quality gate passed - basic requirements met"

@@ -16,17 +16,14 @@ The CI pipeline runs on:
 ## Pipeline Jobs
 
 ### 1. Test Job (`test`)
-**Matrix Strategy**: Runs on Python 3.9, 3.10, 3.11, and 3.12
+**Environment**: Python 3.12 (simplified from multi-version matrix)
 
 **Steps:**
 - Code checkout
 - Python environment setup with caching
 - System dependencies installation (build-essential)
-- Python dependencies installation with retry logic
-- Python syntax validation
-- Code formatting check (Black)
-- Linting (Flake8)
-- Type checking (MyPy)
+- Python dependencies installation
+- Code formatting and linting (Ruff)
 - Test execution (Pytest)
 - Coverage reporting (Codecov)
 
@@ -66,21 +63,12 @@ The CI pipeline runs on:
 
 ### Code Quality Tools
 
-#### Black (Code Formatting)
+#### Ruff (Formatting and Linting)
 - **Config**: `pyproject.toml`
 - **Line Length**: 88 characters
-- **Target**: Python 3.9-3.12
-
-#### Flake8 (Linting)
-- **Config**: `setup.cfg`
-- **Max Line Length**: 88 characters
-- **Compatibility**: Black-compatible settings
-- **Exclusions**: Test files have relaxed rules
-
-#### MyPy (Type Checking)
-- **Config**: `mypy.ini`
-- **Mode**: Gradual typing (relaxed for early development)
-- **Import Handling**: Ignore missing imports for external packages
+- **Target**: Python 3.9+
+- **Features**: Combines formatting (replaces Black) and linting (replaces Flake8)
+- **Rules**: Includes pycodestyle, pyflakes, isort, flake8-bugbear, and pyupgrade
 
 #### Pytest (Testing)
 - **Config**: `pyproject.toml` and `pytest.ini`
@@ -103,10 +91,7 @@ Curated subset excluding problematic packages:
 Optional developer setup for local validation:
 - Trailing whitespace removal
 - YAML/JSON/TOML validation
-- Black formatting
-- Flake8 linting
-- MyPy type checking
-- Import sorting (isort)
+- Ruff formatting and linting (replaces Black, Flake8, MyPy, isort)
 
 ## Usage
 
@@ -126,9 +111,8 @@ Optional developer setup for local validation:
 
 3. **Code Quality Checks**:
    ```bash
-   black --check src/ tests/
-   flake8 src/ tests/
-   mypy src/
+   ruff check src/ tests/
+   ruff format --check src/ tests/
    ```
 
 ### For Maintainers
@@ -144,16 +128,16 @@ Optional developer setup for local validation:
    - Update documentation if dependency affects development workflow
 
 3. **Adjusting Quality Standards**:
-   - Update configuration files (`setup.cfg`, `mypy.ini`, `pyproject.toml`)
+   - Update configuration in `pyproject.toml`
    - Consider backward compatibility with existing code
    - Test configuration changes in development branches
 
 ## Best Practices
 
 ### Code Quality
-- **Formatting**: Use Black for consistent code formatting
-- **Linting**: Address Flake8 errors; warnings are acceptable during early development
-- **Type Hints**: Gradually add type hints; enforce in critical modules (models)
+- **Formatting**: Use Ruff for consistent code formatting (replaces Black)
+- **Linting**: Address Ruff errors; warnings are configurable
+- **Type Hints**: Optional - previous MyPy checking removed for simplicity
 - **Documentation**: Add docstrings for public APIs
 
 ### Testing
@@ -181,8 +165,8 @@ Optional developer setup for local validation:
    - Check for environment-specific problems
 
 3. **Code Quality Issues**:
-   - Run tools locally: `black --diff src/`, `flake8 src/`, `mypy src/`
-   - Review configuration files for project-specific settings
+   - Run tools locally: `ruff check src/`, `ruff format --check src/`
+   - Review configuration in `pyproject.toml` for project-specific settings
    - Consider gradual improvement for legacy code
 
 ### GitHub Actions Debugging

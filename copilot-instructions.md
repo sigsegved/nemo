@@ -48,8 +48,7 @@ This document provides comprehensive guidance for AI coding assistants working o
 
 ### Code Quality Standards
 - **Type Hints**: Use comprehensive type annotations (checked with mypy)
-- **Formatting**: Use `black` for consistent code formatting
-- **Linting**: Follow `flake8` rules for code quality
+- **Formatting & Linting**: Use `ruff` for consistent code formatting and linting
 - **Documentation**: Include docstrings for all public functions and classes
 - **Testing**: **MANDATORY** - All PRs must include comprehensive tests using pytest
 
@@ -305,7 +304,8 @@ When working on the Nemo codebase:
 
 2. **Before Making Changes**
    - [ ] Run existing tests: `pytest`
-   - [ ] Check code style: `black --check src/`
+   - [ ] Check code style and linting: `ruff check src/ tests/`
+   - [ ] Check code formatting: `ruff format --check src/ tests/`
    - [ ] Run type checking: `mypy src/`
    - [ ] Review relevant documentation and code
 
@@ -313,13 +313,14 @@ When working on the Nemo codebase:
    - [ ] **Create comprehensive tests first** (TDD approach recommended)
    - [ ] Implement changes with minimal modifications
    - [ ] Run tests frequently: `pytest -x`
-   - [ ] Check formatting: `black src/`
+   - [ ] Check formatting and linting: `ruff check src/ tests/`
+   - [ ] Auto-format code: `ruff format src/ tests/`
    - [ ] Validate type hints: `mypy src/`
 
 4. **Before Committing** 
    - [ ] **All tests pass**: `pytest` (MANDATORY)
    - [ ] **Test coverage verified**: Check coverage reports
-   - [ ] Code is formatted: `black src/`
+   - [ ] **Code is formatted and linted**: `ruff check src/ tests/` and `ruff format src/ tests/`
    - [ ] Type checking passes: `mypy src/`
    - [ ] Documentation is updated
    - [ ] Configuration changes are documented
