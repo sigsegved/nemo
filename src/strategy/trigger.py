@@ -123,7 +123,9 @@ class PriceDeviationTrigger:
             # Calculate signal strength based on how much threshold is exceeded
             strength = min(abs_deviation / self.threshold, Decimal("2.0")) / Decimal(
                 "2.0"
-            )
+            strength = min(
+                abs_deviation / self.threshold, self.MAX_SIGNAL_STRENGTH_FACTOR
+            ) / self.MAX_SIGNAL_STRENGTH_FACTOR
 
             self.last_signal_time = timestamp
 
