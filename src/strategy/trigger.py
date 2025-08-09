@@ -211,7 +211,8 @@ class VolumeSpikeTrigger:
             # Calculate signal strength
             strength = min(
                 volume_ratio / self.spike_multiplier, Decimal("2.0")
-            ) / Decimal("2.0")
+                volume_ratio / self.spike_multiplier, MAX_SIGNAL_STRENGTH
+            ) / MAX_SIGNAL_STRENGTH
 
             self.last_signal_time = timestamp
 
