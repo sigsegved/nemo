@@ -292,6 +292,64 @@ async def trading_session():
 - Avoid memory leaks in long-running processes
 - Don't ignore connection timeouts and retries
 
+## Validated Build and Test Commands
+
+**CRITICAL**: All commands below are validated and work correctly. **NEVER CANCEL** long-running operations.
+
+### Environment Setup (NEVER CANCEL - Takes 2-3 minutes)
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install --upgrade pip wheel setuptools
+pip install -r requirements-ci.txt  # NEVER CANCEL: Takes about 1-2 minutes
+```
+
+**Alternative for full development dependencies (may have network issues)**:
+```bash
+pip install -r requirements.txt  # May timeout - use requirements-ci.txt if this fails
+```
+
+### Verify Dependencies
+```bash
+python -c "import pydantic; print('✓ pydantic', pydantic.__version__); import pytest; print('✓ pytest', pytest.__version__); import numpy; print('✓ numpy', numpy.__version__)"
+```
+
+### Code Quality (Fast - Under 1 second each)
+```bash
+ruff check src/ tests/                    # Linting
+ruff format --check src/ tests/          # Format checking
+ruff format src/ tests/                  # Auto-format code
+ruff check --fix src/ tests/             # Auto-fix lint issues
+```
+
+### Testing (NEVER CANCEL)
+```bash
+pytest tests/ -v                         # NEVER CANCEL: Takes 11 seconds, runs over 200 tests
+pytest tests/ --cov=src --cov-report=term-missing  # NEVER CANCEL: Takes 12 seconds with coverage
+pytest tests/ -m "unit"                  # Fast unit tests: Takes 1 second, 21 tests
+pytest tests/ -m "integration"           # Integration tests: Takes 11 seconds, 20 tests
+```
+
+### Application Validation
+```bash
+python demo.py  # Takes 0.1 seconds - shows VWAP calculations and triggers
+python src/main.py --config config.local.yaml --paper-trading   # Paper trading (safe)
+```
+
+### Configuration Setup
+```bash
+cp config.yaml config.local.yaml
+# Edit config.local.yaml with your settings and API credentials
+```
+
+## Command Timing Information (Add 50% timeout buffer)
+- **pip install requirements-ci.txt**: 2 minutes (measured: 1m47s)
+- **pytest tests/**: 20 seconds (measured: 11s)  
+- **pytest with coverage**: 20 seconds (measured: 12s)
+- **Integration tests**: 20 seconds (measured: 11s)
+- **ruff commands**: Under 1 second each
+- **demo.py**: Under 1 second
+
 ## Getting Started Checklist
 
 When working on the Nemo codebase:
@@ -299,11 +357,11 @@ When working on the Nemo codebase:
 1. **Setup Environment**
    - [ ] Create virtual environment: `python -m venv venv`
    - [ ] Activate environment: `source venv/bin/activate`
-   - [ ] Install dependencies: `pip install -r requirements.txt`
+   - [ ] Install dependencies: `pip install -r requirements-ci.txt` (**NEVER CANCEL: 1m47s**)
    - [ ] Copy config template: `cp config.yaml config.local.yaml`
 
 2. **Before Making Changes**
-   - [ ] Run existing tests: `pytest`
+   - [ ] Run existing tests: `pytest tests/ -v` (**NEVER CANCEL: 11s, 232 tests**)
    - [ ] Check code style and linting: `ruff check src/ tests/`
    - [ ] Check code formatting: `ruff format --check src/ tests/`
    - [ ] Run type checking: `mypy src/`
@@ -318,24 +376,84 @@ When working on the Nemo codebase:
    - [ ] Validate type hints: `mypy src/`
 
 4. **Before Committing** 
-   - [ ] **All tests pass**: `pytest` (MANDATORY)
-   - [ ] **Test coverage verified**: Check coverage reports
+   - [ ] **All tests pass**: `pytest tests/ -v` (**MANDATORY - NEVER CANCEL: 11s**)
+   - [ ] **Test coverage verified**: Check coverage reports (should be 85%+)
    - [ ] **Code is formatted and linted**: `ruff check src/ tests/` and `ruff format src/ tests/`
    - [ ] Type checking passes: `mypy src/`
    - [ ] Documentation is updated
    - [ ] Configuration changes are documented
 
+## Mandatory Validation Requirements
+
+**After any changes, ALWAYS run complete validation workflow:**
+
+### Core Validation (Takes ~2 minutes total)
+```bash
+source venv/bin/activate
+pip install -r requirements-ci.txt  # NEVER CANCEL: 1m47s
+ruff check src/ tests/               # < 1 second
+ruff format --check src/ tests/     # < 1 second
+pip install -r requirements-ci.txt
+ruff check src/ tests/
+ruff format --check src/ tests/
+pytest tests/ -v
+```
+
+### Functional Validation
+```bash
+python demo.py                      # Should show VWAP calculations and trigger detection
+python src/main.py --config config.local.yaml --paper-trading  # Should start without errors
+```
+
+### Expected Output Validation
+- **Demo script**: Should show trade processing, VWAP calculations, trigger detection, and summary
+- **Main application**: Should show startup messages and trading mode confirmation
+- **Tests**: Should pass 215+ tests with 85%+ coverage, may have 17 skips and 1 warning (normal)
+
+## Emergency Procedures
+
+### If Tests Fail
+1. Check recent changes with `git --no-pager diff`
+2. Run specific failing test: `pytest tests/path/to/test.py::test_name -v`
+3. Check test output for specific error details
+4. Revert changes if unclear: `git checkout -- filename`
+
+### If Dependencies Fail
+1. Use `requirements-ci.txt` instead of `requirements.txt`
+2. Check network connectivity
+3. Clear pip cache: `pip cache purge`
+4. Recreate virtual environment if needed
+
+### If CI Fails
+1. Check GitHub Actions logs for specific error
+2. Reproduce issue locally with exact CI commands
+3. Focus on new changes since last successful build
+4. Check for environment-specific issues
+
 ## Additional Resources
 
 - **README.md**: Project overview and quick start guide
 - **config.yaml**: Configuration template with comments
-- **requirements.txt**: Complete dependency list
+- **requirements.txt**: Complete dependency list (use requirements-ci.txt for reliability)
+- **requirements-ci.txt**: Stable CI dependencies (RECOMMENDED)
 - **LICENSE**: Project licensing information
 
 ## Notes for AI Assistants
 
 - This is a financial trading system - prioritize correctness and safety
-- The codebase is in early development - many files contain TODO comments and placeholder implementations
+- The codebase is in early development - many files contain TODO comments and placeholder implementations  
 - Focus on implementing robust, well-tested components that follow established patterns
 - Always consider the real-time, high-stakes nature of trading applications
 - When in doubt about trading logic or risk management, err on the side of caution
+
+## Critical Operational Notes
+
+1. **NEVER CANCEL** build or test commands - they complete quickly (validated timing above)
+2. **ALWAYS** test functionality manually using demo.py and main application
+3. **MANDATORY** test coverage must remain above 80% for new code
+4. Use `requirements-ci.txt` for reliable dependency installation
+5. All API credentials must use environment variables, never hardcode
+6. Test both paper-trading and configuration validation scenarios
+7. Monitor CI pipeline and fix failures immediately
+
+This project implements sophisticated financial algorithms with real-time requirements. Prioritize correctness, test coverage, and security in all modifications.
