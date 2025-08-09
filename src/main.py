@@ -19,10 +19,11 @@ from pathlib import Path
 # - Logging and monitoring integration
 # - Health checks and system status
 
+
 def main():
     """
     Main entry point for the Nemo trading bot.
-    
+
     This function will:
     1. Parse command line arguments
     2. Load configuration from specified config file
@@ -33,49 +34,49 @@ def main():
     """
     parser = argparse.ArgumentParser(
         description="Nemo Volatility Harvest Bot - Algorithmic Trading System",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    
+
     parser.add_argument(
-        '--config',
+        "--config",
         type=str,
-        default='config.yaml',
-        help='Path to configuration file (default: config.yaml)'
+        default="config.yaml",
+        help="Path to configuration file (default: config.yaml)",
     )
-    
+
     trading_group = parser.add_mutually_exclusive_group(required=True)
     trading_group.add_argument(
-        '--paper-trading',
-        action='store_true',
-        help='Start in paper trading mode (recommended for testing)'
+        "--paper-trading",
+        action="store_true",
+        help="Start in paper trading mode (recommended for testing)",
     )
     trading_group.add_argument(
-        '--live-trading',
-        action='store_true',
-        help='Start in live trading mode (use with caution)'
+        "--live-trading",
+        action="store_true",
+        help="Start in live trading mode (use with caution)",
     )
-    
+
     args = parser.parse_args()
-    
+
     # Validate config file exists
     config_path = Path(args.config)
     if not config_path.exists():
         print(f"Error: Configuration file '{args.config}' not found.", file=sys.stderr)
         sys.exit(1)
-    
+
     # Determine trading mode
     trading_mode = "paper" if args.paper_trading else "live"
-    
+
     print("Nemo Volatility Harvest Bot - Starting...")
     print(f"Configuration: {args.config}")
     print(f"Trading Mode: {trading_mode}")
-    
+
     # TODO: Implement main application logic
     # - Load configuration from args.config
     # - Initialize providers based on trading_mode
     # - Set up strategy engines and risk management
     # - Start main trading loop
-    
+
     print("Bot initialized successfully (placeholder)")
 
 
