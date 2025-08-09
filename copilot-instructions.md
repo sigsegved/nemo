@@ -324,7 +324,7 @@ ruff check --fix src/ tests/             # Auto-fix lint issues
 
 ### Testing (NEVER CANCEL)
 ```bash
-pytest tests/ -v                         # NEVER CANCEL: Takes 11 seconds, runs 232 tests
+pytest tests/ -v                         # NEVER CANCEL: Takes 11 seconds, runs over 200 tests
 pytest tests/ --cov=src --cov-report=term-missing  # NEVER CANCEL: Takes 12 seconds with coverage
 pytest tests/ -m "unit"                  # Fast unit tests: Takes 1 second, 21 tests
 pytest tests/ -m "integration"           # Integration tests: Takes 11 seconds, 20 tests
