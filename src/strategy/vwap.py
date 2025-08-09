@@ -11,11 +11,13 @@ from decimal import Decimal
 from typing import Optional, Union
 
 try:
+    import numpy as np
     from numba import njit
 
     NUMBA_AVAILABLE = True
 except ImportError:
     NUMBA_AVAILABLE = False
+    np = None
 
     # Fallback decorator that does nothing
     def njit(*args, **kwargs):
@@ -23,6 +25,20 @@ except ImportError:
             return func
 
         return decorator
+
+
+@njit
+def _calculate_vwap_numba_core(pv_array, volume_array):
+    """Core Numba-optimized VWAP calculation."""
+    if len(volume_array) == 0:
+        return None
+
+    total_volume = volume_array.sum()
+    if total_volume == 0:
+        return None
+
+    total_pv = pv_array.sum()
+    return total_pv / total_volume
 
 
 class RingBuffer:
@@ -191,13 +207,15 @@ class VWAPCalculator:
 
     def _calculate_vwap_numba(self, trades: list[dict]) -> Optional[Decimal]:
         """Numba-optimized VWAP calculation (when available)."""
-        # Note: This would need proper numba array handling in a real implementation
-        # For now, fallback to Python implementation
-    def _calculate_vwap_numba(self, trades: list[dict]) -> Optional[Decimal]:
-        """Numba-optimized VWAP calculation (when available)."""
+        if not NUMBA_AVAILABLE or np is None:
+            # Fallback to Python implementation when Numba/numpy not available
+            return self._calculate_vwap_python(trades)
+
         # Convert trade data to numpy arrays of floats for Numba
         pv_array = np.array([float(trade["pv"]) for trade in trades], dtype=float)
-        volume_array = np.array([float(trade["volume"]) for trade in trades], dtype=float)
+        volume_array = np.array(
+            [float(trade["volume"]) for trade in trades], dtype=float
+        )
         vwap = _calculate_vwap_numba_core(pv_array, volume_array)
         if vwap is None:
             return None

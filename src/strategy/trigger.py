@@ -14,6 +14,10 @@ from typing import Optional, Union
 
 from .vwap import VolumeAggregator, VWAPCalculator
 
+# Constants for signal strength calculation
+MAX_SIGNAL_STRENGTH = Decimal("2.0")
+MAX_STRENGTH_MULTIPLIER = Decimal("2.0")
+
 
 class TriggerType(Enum):
     """Types of trading triggers."""
@@ -63,6 +67,8 @@ class PriceDeviationTrigger:
     Monitors price deviation from VWAP and generates signals when
     |Price - VWAP30| / VWAP30 ≥ threshold.
     """
+
+    MAX_SIGNAL_STRENGTH_FACTOR = Decimal("2.0")
 
     def __init__(
         self, threshold: Decimal = Decimal("0.01"), vwap_window_minutes: int = 30
@@ -121,11 +127,10 @@ class PriceDeviationTrigger:
 
         if abs_deviation >= self.threshold:
             # Calculate signal strength based on how much threshold is exceeded
-            strength = min(abs_deviation / self.threshold, Decimal("2.0")) / Decimal(
-                "2.0"
-            strength = min(
-                abs_deviation / self.threshold, self.MAX_SIGNAL_STRENGTH_FACTOR
-            ) / self.MAX_SIGNAL_STRENGTH_FACTOR
+            strength = (
+                min(abs_deviation / self.threshold, self.MAX_SIGNAL_STRENGTH_FACTOR)
+                / self.MAX_SIGNAL_STRENGTH_FACTOR
+            )
 
             self.last_signal_time = timestamp
 
@@ -209,10 +214,10 @@ class VolumeSpikeTrigger:
 
         if volume_ratio >= self.spike_multiplier:
             # Calculate signal strength
-            strength = min(
-                volume_ratio / self.spike_multiplier, Decimal("2.0")
-                volume_ratio / self.spike_multiplier, MAX_SIGNAL_STRENGTH
-            ) / MAX_SIGNAL_STRENGTH
+            strength = (
+                min(volume_ratio / self.spike_multiplier, MAX_SIGNAL_STRENGTH)
+                / MAX_SIGNAL_STRENGTH
+            )
 
             self.last_signal_time = timestamp
 
@@ -317,10 +322,10 @@ class LiquidationTracker:
 
         if liquidation_sum >= self.min_liquidation_sum:
             # Calculate signal strength
-            strength = min(
-                liquidation_sum / self.min_liquidation_sum, Decimal("2.0")
-                liquidation_sum / self.min_liquidation_sum, MAX_STRENGTH_MULTIPLIER
-            ) / MAX_STRENGTH_MULTIPLIER
+            strength = (
+                min(liquidation_sum / self.min_liquidation_sum, MAX_STRENGTH_MULTIPLIER)
+                / MAX_STRENGTH_MULTIPLIER
+            )
 
             self.last_signal_time = timestamp
 
