@@ -193,7 +193,15 @@ class VWAPCalculator:
         """Numba-optimized VWAP calculation (when available)."""
         # Note: This would need proper numba array handling in a real implementation
         # For now, fallback to Python implementation
-        return self._calculate_vwap_python(trades)
+    def _calculate_vwap_numba(self, trades: list[dict]) -> Optional[Decimal]:
+        """Numba-optimized VWAP calculation (when available)."""
+        # Convert trade data to numpy arrays of floats for Numba
+        pv_array = np.array([float(trade["pv"]) for trade in trades], dtype=float)
+        volume_array = np.array([float(trade["volume"]) for trade in trades], dtype=float)
+        vwap = _calculate_vwap_numba_core(pv_array, volume_array)
+        if vwap is None:
+            return None
+        return Decimal(str(vwap))
 
     def get_deviation_from_current_price(
         self,
