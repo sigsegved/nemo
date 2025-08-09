@@ -570,10 +570,11 @@ class TestIntegration:
     def test_circuit_breaker_integration(self):
         """Test circuit breaker integration with trading."""
         # Simulate 3 consecutive losing trades
-        for i in range(3):
+        symbols = ["BTC_TEST_A", "BTC_TEST_B", "BTC_TEST_C"]
+        for symbol in symbols:
             # Enter position
             entry_signal = TradeSignal(
-                symbol=f"BTC{i}",
+                symbol=symbol,
                 strategy=StrategyType.MEAN_REVERSION,
                 side=PositionSide.LONG,
                 action="enter",
@@ -586,7 +587,7 @@ class TestIntegration:
             
             # Stop loss exit
             stop_signal = TradeSignal(
-                symbol=f"BTC{i}",
+                symbol=symbol,
                 strategy=StrategyType.MEAN_REVERSION,
                 side=PositionSide.LONG,
                 action="stop_loss",

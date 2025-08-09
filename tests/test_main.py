@@ -11,6 +11,8 @@ from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
 
 from src.main import TradingOrchestrator, setup_logging, load_config
+from src.strategy.trigger import TriggerEngine
+from src.strategy.vwap import MultiTimeframeVWAP
 
 
 class TestTradingOrchestrator:
@@ -66,8 +68,6 @@ class TestTradingOrchestrator:
         """Test market data simulator."""
         # Initialize components
         for symbol in self.orchestrator.symbols:
-            from src.strategy.trigger import TriggerEngine
-            from src.strategy.vwap import MultiTimeframeVWAP
             self.orchestrator.trigger_engines[symbol] = TriggerEngine(symbol)
             self.orchestrator.vwap_calculators[symbol] = MultiTimeframeVWAP()
         

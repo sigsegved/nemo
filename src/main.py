@@ -8,6 +8,7 @@ risk management, and trade execution.
 
 import argparse
 import asyncio
+import random
 import signal
 import sys
 import logging
@@ -225,7 +226,6 @@ class TradingOrchestrator:
                 
                 for symbol in self.symbols:
                     # Generate simulated price and volume
-                    import random
                     base_price = base_prices.get(symbol, 50000)
                     
                     # Add some volatility
@@ -266,7 +266,6 @@ class TradingOrchestrator:
         vwap = vwap_calc.get_vwap("3min")
         if vwap:
             # Add small random variation to simulate current price
-            import random
             variation = random.gauss(0, 0.001)  # 0.1% std dev
             return vwap * Decimal(str(1 + variation))
         
@@ -456,13 +455,13 @@ async def main_async(config_path: str, trading_mode: str) -> None:
     orchestrator = TradingOrchestrator(config)
     
     # Setup signal handlers for graceful shutdown
-    def signal_handler():
+    def signal_handler(signum, frame):
         logger.info("Shutdown signal received")
         orchestrator.shutdown_event.set()
     
     # Register signal handlers
     for sig in [signal.SIGTERM, signal.SIGINT]:
-        signal.signal(sig, lambda s, f: signal_handler())
+        signal.signal(sig, signal_handler)
     
     try:
         await orchestrator.start()
