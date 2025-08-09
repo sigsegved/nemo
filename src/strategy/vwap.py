@@ -189,7 +189,6 @@ class VWAPCalculator:
 
         return total_pv / total_volume
 
-    @njit
     def _calculate_vwap_numba(self, trades: list[dict]) -> Optional[Decimal]:
         """Numba-optimized VWAP calculation (when available)."""
         # Note: This would need proper numba array handling in a real implementation
