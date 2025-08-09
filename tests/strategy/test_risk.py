@@ -2,14 +2,21 @@
 Tests for risk management and trading strategy logic.
 """
 
-import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+import pytest
+
 from src.strategy.risk import (
-    RiskManager, PositionSizer, CircuitBreaker,
-    MeanReversionStrategy, MomentumStrategy,
-    Position, TradeSignal, StrategyType, PositionSide,
+    CircuitBreaker,
+    MeanReversionStrategy,
+    MomentumStrategy,
+    Position,
+    PositionSide,
+    PositionSizer,
+    RiskManager,
+    StrategyType,
+    TradeSignal,
 )
 from src.strategy.trigger import TriggerSignal, TriggerType
 
@@ -39,7 +46,7 @@ class TestPositionSizer:
             StrategyType.MEAN_REVERSION,
             Decimal("1.0"),
         )
-        
+
         # 25% * $100k * 3x leverage = $75k
         # $75k / $50k per BTC = 1.5 BTC
         expected = Decimal("1.5")
@@ -53,7 +60,7 @@ class TestPositionSizer:
             StrategyType.MOMENTUM,
             Decimal("1.0"),
         )
-        
+
         # 25% * $100k * 2x leverage = $50k
         # $50k / $50k per BTC = 1.0 BTC
         expected = Decimal("1.0")
@@ -67,7 +74,7 @@ class TestPositionSizer:
         half_strength = self.sizer.calculate_position_size(
             "BTCUSD", Decimal("50000"), StrategyType.MEAN_REVERSION, Decimal("0.5")
         )
-        
+
         assert half_strength == full_strength * Decimal("0.5")
 
     def test_stop_loss_calculation_long(self):
@@ -76,7 +83,7 @@ class TestPositionSizer:
         stop_loss = self.sizer.calculate_stop_loss_price(
             entry_price, PositionSide.LONG, Decimal("0.01")
         )
-        
+
         expected = Decimal("49500")  # 50000 * 0.99
         assert stop_loss == expected
 
@@ -86,7 +93,7 @@ class TestPositionSizer:
         stop_loss = self.sizer.calculate_stop_loss_price(
             entry_price, PositionSide.SHORT, Decimal("0.01")
         )
-        
+
         expected = Decimal("50500")  # 50000 * 1.01
         assert stop_loss == expected
 
@@ -126,7 +133,7 @@ class TestCircuitBreaker:
         self.breaker.record_trade_outcome(False)
         self.breaker.record_trade_outcome(False)
         assert not self.breaker.is_paused
-        
+
         # Third loss should trigger circuit break
         self.breaker.record_trade_outcome(False)
         assert self.breaker.is_paused
@@ -136,7 +143,7 @@ class TestCircuitBreaker:
         """Test pause duration check."""
         self.breaker.trigger_circuit_break()
         assert self.breaker.check_if_paused()
-        
+
         # Simulate time passing
         self.breaker.last_circuit_break = datetime.now() - timedelta(hours=3)
         assert not self.breaker.check_if_paused()
@@ -172,7 +179,7 @@ class TestMeanReversionStrategy:
             "BTCUSD",
             {"direction": "above", "deviation": Decimal("0.015")},
         )
-        
+
         signal = self.strategy.generate_entry_signal(
             "BTCUSD",
             Decimal("51000"),  # Current price
@@ -180,7 +187,7 @@ class TestMeanReversionStrategy:
             [trigger_signal],
             datetime.now(),
         )
-        
+
         assert signal is not None
         assert signal.side == PositionSide.SHORT  # Mean reversion: sell high
         assert signal.strategy == StrategyType.MEAN_REVERSION
@@ -195,7 +202,7 @@ class TestMeanReversionStrategy:
             "BTCUSD",
             {"direction": "below", "deviation": Decimal("-0.015")},
         )
-        
+
         signal = self.strategy.generate_entry_signal(
             "BTCUSD",
             Decimal("49000"),  # Current price
@@ -203,7 +210,7 @@ class TestMeanReversionStrategy:
             [trigger_signal],
             datetime.now(),
         )
-        
+
         assert signal is not None
         assert signal.side == PositionSide.LONG  # Mean reversion: buy low
         assert signal.strategy == StrategyType.MEAN_REVERSION
@@ -225,12 +232,12 @@ class TestMeanReversionStrategy:
             quantity=Decimal("1.0"),
             entry_time=datetime.now(),
         )
-        
+
         # Price touches VWAP from below
         exit_signal = self.strategy.check_exit_conditions(
             position, Decimal("50000"), Decimal("50000"), datetime.now()
         )
-        
+
         assert exit_signal is not None
         assert exit_signal.action == "take_profit"
         assert "VWAP touch" in exit_signal.reason
@@ -246,11 +253,11 @@ class TestMeanReversionStrategy:
             quantity=Decimal("1.0"),
             entry_time=old_time,
         )
-        
+
         exit_signal = self.strategy.check_exit_conditions(
             position, Decimal("49500"), Decimal("49800"), datetime.now()
         )
-        
+
         assert exit_signal is not None
         assert exit_signal.action == "exit"
         assert "timeout" in exit_signal.reason
@@ -273,7 +280,7 @@ class TestMomentumStrategy:
             "BTCUSD",
             {"volume_ratio": Decimal("3.5")},
         )
-        
+
         signal = self.strategy.generate_entry_signal(
             "BTCUSD",
             Decimal("52000"),  # Current price
@@ -282,7 +289,7 @@ class TestMomentumStrategy:
             [volume_signal],
             datetime.now(),
         )
-        
+
         assert signal is not None
         assert signal.side == PositionSide.LONG
         assert signal.strategy == StrategyType.MOMENTUM
@@ -296,7 +303,7 @@ class TestMomentumStrategy:
             "BTCUSD",
             {"volume_ratio": Decimal("3.5")},
         )
-        
+
         signal = self.strategy.generate_entry_signal(
             "BTCUSD",
             Decimal("48000"),  # Current price
@@ -305,7 +312,7 @@ class TestMomentumStrategy:
             [volume_signal],
             datetime.now(),
         )
-        
+
         assert signal is not None
         assert signal.side == PositionSide.SHORT
         assert signal.strategy == StrategyType.MOMENTUM
@@ -320,10 +327,12 @@ class TestMomentumStrategy:
             quantity=Decimal("1.0"),
             entry_time=datetime.now(),
         )
-        
+
         # Update trailing stop with VWAP4h
-        self.strategy._update_trailing_stop(position, Decimal("52000"), Decimal("51000"))
-        
+        self.strategy._update_trailing_stop(
+            position, Decimal("52000"), Decimal("51000")
+        )
+
         # Trailing stop should be VWAP4h - 0.9%
         expected_stop = Decimal("51000") * Decimal("0.991")
         assert position.trailing_stop_price == expected_stop
@@ -339,11 +348,11 @@ class TestMomentumStrategy:
             quantity=Decimal("1.0"),
             entry_time=old_time,
         )
-        
+
         exit_signal = self.strategy.check_exit_conditions(
             position, Decimal("52000"), Decimal("51000"), datetime.now()
         )
-        
+
         assert exit_signal is not None
         assert exit_signal.action == "exit"
         assert "Maximum hold period" in exit_signal.reason
@@ -381,20 +390,22 @@ class TestRiskManager:
             "BTCUSD",
             {"direction": "above", "deviation": Decimal("0.015")},
         )
-        
+
         vwap_data = {
             "3min": Decimal("50500"),
             "30min": Decimal("50000"),
             "4hour": Decimal("49500"),
         }
-        
+
         signals = self.risk_manager.generate_signals(
             "BTCUSD", Decimal("51000"), vwap_data, [trigger_signal], datetime.now()
         )
-        
+
         # Should generate mean reversion signal (price above VWAP)
         assert len(signals) >= 1
-        mean_rev_signals = [s for s in signals if s.strategy == StrategyType.MEAN_REVERSION]
+        mean_rev_signals = [
+            s for s in signals if s.strategy == StrategyType.MEAN_REVERSION
+        ]
         assert len(mean_rev_signals) > 0
         assert mean_rev_signals[0].side == PositionSide.SHORT
 
@@ -410,15 +421,15 @@ class TestRiskManager:
             timestamp=datetime.now(),
             reason="Test entry",
         )
-        
+
         # Enter position
         success = self.risk_manager.execute_signal(entry_signal)
         assert success
         assert "BTCUSD" in self.risk_manager.active_positions
-        
+
         position = self.risk_manager.active_positions["BTCUSD"]
         assert position.stop_loss_price is not None
-        
+
         # Exit position
         exit_signal = TradeSignal(
             symbol="BTCUSD",
@@ -430,7 +441,7 @@ class TestRiskManager:
             timestamp=datetime.now(),
             reason="Test exit",
         )
-        
+
         success = self.risk_manager.execute_signal(exit_signal)
         assert success
         assert "BTCUSD" not in self.risk_manager.active_positions
@@ -449,7 +460,7 @@ class TestRiskManager:
             reason="Test entry",
         )
         self.risk_manager.execute_signal(entry_signal)
-        
+
         # Stop loss exit
         stop_loss_signal = TradeSignal(
             symbol="BTCUSD",
@@ -461,9 +472,9 @@ class TestRiskManager:
             timestamp=datetime.now(),
             reason="Stop loss",
         )
-        
+
         self.risk_manager.execute_signal(stop_loss_signal)
-        
+
         # Should be on cooldown
         assert not self.risk_manager.is_trading_allowed("BTCUSD")
         assert "BTCUSD" in self.risk_manager.cooldown_until
@@ -471,13 +482,13 @@ class TestRiskManager:
     def test_portfolio_summary(self):
         """Test portfolio summary generation."""
         summary = self.risk_manager.get_portfolio_summary()
-        
+
         assert "active_positions" in summary
         assert "total_notional_value" in summary
         assert "circuit_breaker_active" in summary
         assert "consecutive_losses" in summary
         assert "symbols_on_cooldown" in summary
-        
+
         assert summary["active_positions"] == 0
         assert not summary["circuit_breaker_active"]
 
@@ -495,7 +506,7 @@ class TestPositionModel:
             quantity=Decimal("2.5"),
             entry_time=datetime.now(),
         )
-        
+
         assert position.notional_value == Decimal("125000")
 
     def test_position_expiry_check(self):
@@ -510,7 +521,7 @@ class TestPositionModel:
             entry_time=old_time,
             max_hold_time=timedelta(hours=1),
         )
-        
+
         assert position.is_expired
 
 
@@ -531,37 +542,39 @@ class TestIntegration:
             "BTCUSD",
             {"direction": "above", "deviation": Decimal("0.02")},
         )
-        
+
         vwap_data = {
             "3min": Decimal("51200"),
             "30min": Decimal("50000"),
             "4hour": Decimal("49000"),
         }
-        
+
         # Generate entry signal
         signals = self.risk_manager.generate_signals(
             "BTCUSD", Decimal("51000"), vwap_data, [trigger_signal], datetime.now()
         )
-        
+
         assert len(signals) > 0
         entry_signal = signals[0]
         assert entry_signal.strategy == StrategyType.MEAN_REVERSION
-        assert entry_signal.side == PositionSide.SHORT  # Mean reversion against upward move
-        
+        assert (
+            entry_signal.side == PositionSide.SHORT
+        )  # Mean reversion against upward move
+
         # Execute entry
         success = self.risk_manager.execute_signal(entry_signal)
         assert success
         assert "BTCUSD" in self.risk_manager.active_positions
-        
+
         # Check exit when price touches VWAP
         exit_signals = self.risk_manager.generate_signals(
             "BTCUSD", Decimal("50000"), vwap_data, [], datetime.now()
         )
-        
+
         assert len(exit_signals) > 0
         exit_signal = exit_signals[0]
         assert exit_signal.action in ["take_profit", "exit"]
-        
+
         # Execute exit
         success = self.risk_manager.execute_signal(exit_signal)
         assert success
@@ -584,7 +597,7 @@ class TestIntegration:
                 reason="Test",
             )
             self.risk_manager.execute_signal(entry_signal)
-            
+
             # Stop loss exit
             stop_signal = TradeSignal(
                 symbol=symbol,
@@ -597,9 +610,9 @@ class TestIntegration:
                 reason="Stop loss",
             )
             self.risk_manager.execute_signal(stop_signal)
-        
+
         # Circuit breaker should now be active
         assert not self.risk_manager.is_trading_allowed("NEWBTC")
-        
+
         summary = self.risk_manager.get_portfolio_summary()
         assert summary["circuit_breaker_active"]
