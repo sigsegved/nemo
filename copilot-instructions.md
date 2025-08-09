@@ -301,7 +301,7 @@ async def trading_session():
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install --upgrade pip wheel setuptools
-pip install -r requirements-ci.txt  # NEVER CANCEL: Takes 1 minute 47 seconds
+pip install -r requirements-ci.txt  # NEVER CANCEL: Takes about 1-2 minutes
 ```
 
 **Alternative for full development dependencies (may have network issues)**:
