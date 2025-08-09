@@ -393,7 +393,10 @@ source venv/bin/activate
 pip install -r requirements-ci.txt  # NEVER CANCEL: 1m47s
 ruff check src/ tests/               # < 1 second
 ruff format --check src/ tests/     # < 1 second
-pytest tests/ -v                    # NEVER CANCEL: 11 seconds
+pip install -r requirements-ci.txt
+ruff check src/ tests/
+ruff format --check src/ tests/
+pytest tests/ -v
 ```
 
 ### Functional Validation
