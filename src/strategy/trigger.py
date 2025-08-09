@@ -319,7 +319,8 @@ class LiquidationTracker:
             # Calculate signal strength
             strength = min(
                 liquidation_sum / self.min_liquidation_sum, Decimal("2.0")
-            ) / Decimal("2.0")
+                liquidation_sum / self.min_liquidation_sum, MAX_STRENGTH_MULTIPLIER
+            ) / MAX_STRENGTH_MULTIPLIER
 
             self.last_signal_time = timestamp
 
