@@ -14,9 +14,10 @@ and REST connection patterns:
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
+from datetime import datetime
 from decimal import Decimal
 
-from .models import MarketEvent, OrderAck, Position, TradeTick
+from .models import OHLCV, FundingRate, MarketEvent, OrderAck, Position, TradeTick
 
 
 class DataProvider(ABC):
@@ -58,6 +59,76 @@ class DataProvider(ABC):
     @abstractmethod
     async def disconnect(self) -> None:
         """Clean up and disconnect from data source."""
+        pass
+
+
+class HistoricalDataProvider(ABC):
+    """Abstract base class for historical market data providers."""
+
+    @abstractmethod
+    async def get_candles(
+        self,
+        symbols: list[str],
+        start_date: datetime,
+        end_date: datetime,
+        interval: str = "1m",
+    ) -> list[OHLCV]:
+        """
+        Retrieve historical OHLCV candlestick data.
+
+        Args:
+            symbols: List of trading symbols
+            start_date: Start date for historical data
+            end_date: End date for historical data
+            interval: Candle interval ('1m', '5m', '1h', '1d')
+
+        Returns:
+            List of OHLCV candles sorted by timestamp
+        """
+        pass
+
+    @abstractmethod
+    async def get_funding_rates(
+        self, symbols: list[str], start_date: datetime, end_date: datetime
+    ) -> list[FundingRate]:
+        """
+        Retrieve historical funding rate data.
+
+        Args:
+            symbols: List of trading symbols (perpetual contracts)
+            start_date: Start date for funding data
+            end_date: End date for funding data
+
+        Returns:
+            List of funding rates sorted by timestamp
+        """
+        pass
+
+    @abstractmethod
+    async def get_trade_data(
+        self, symbols: list[str], start_date: datetime, end_date: datetime
+    ) -> list[TradeTick]:
+        """
+        Retrieve historical trade tick data.
+
+        Args:
+            symbols: List of trading symbols
+            start_date: Start date for trade data
+            end_date: End date for trade data
+
+        Returns:
+            List of trade ticks sorted by timestamp
+        """
+        pass
+
+    @abstractmethod
+    async def connect(self) -> None:
+        """Establish connection to historical data source."""
+        pass
+
+    @abstractmethod
+    async def disconnect(self) -> None:
+        """Clean up and disconnect from historical data source."""
         pass
 
 
