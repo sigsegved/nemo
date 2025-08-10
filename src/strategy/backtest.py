@@ -159,7 +159,6 @@ class BacktestEngine:
 
         # Initialize equity curve with starting point
         self.equity_curve = [(start_date, self.initial_equity)]
-        
         # Simulate trading for each symbol
         for symbol in self.symbols:
             if symbol not in historical_data:
@@ -174,7 +173,7 @@ class BacktestEngine:
                 funding_rates.get(symbol, []),
                 train_end_date,
             )
-        
+
         # Add final equity curve point
         if not self.equity_curve or self.equity_curve[-1][0] < end_date:
             self.equity_curve.append((end_date, self.current_equity))
@@ -418,8 +417,12 @@ class BacktestEngine:
         if not trades or not equity_curve:
             # Return empty metrics with provided dates
             return BacktestMetrics(
-                start_date=datetime(2023, 1, 1) if not equity_curve else equity_curve[0][0],
-                end_date=datetime(2023, 1, 1) if not equity_curve else equity_curve[-1][0],
+                start_date=datetime(2023, 1, 1)
+                if not equity_curve
+                else equity_curve[0][0],
+                end_date=datetime(2023, 1, 1)
+                if not equity_curve
+                else equity_curve[-1][0],
                 total_trades=0,
                 winning_trades=0,
                 losing_trades=0,

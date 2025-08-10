@@ -197,8 +197,12 @@ class HeuristicLLMProxy:
         )
 
         # Normalize by time period
-        recent_duration = Decimal(str((current_time - cutoff_time).total_seconds() / 60))
-        historical_duration = Decimal(str((cutoff_time - historical_cutoff).total_seconds() / 60))
+        recent_duration = Decimal(
+            str((current_time - cutoff_time).total_seconds() / 60)
+        )
+        historical_duration = Decimal(
+            str((cutoff_time - historical_cutoff).total_seconds() / 60)
+        )
 
         if historical_duration == Decimal("0"):
             return False
